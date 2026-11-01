@@ -1,0 +1,780 @@
+# Half (반): a voice playtesting mode for Fixion
+
+*Design for Josh Cho, 2026-11-01. Grounded in `/workspace/fixion-wt/main-deploy` at `43688d9`. Companion files:
+`explorations/` (nine reports this design was argued out of: four directions, a client map, a sidecar map, a
+pipeline design, research, and a red-team critique whose accepted changes are folded in below and marked
+"(revised)") and `prototype/index.html` (a clickable mock, fake game + fake AI).*
+
+---
+
+## 0. The core insight
+
+In Fixion the player's only real verb is **to write one line of a script that someone else continues**, and you
+cannot write it as prose: you say it, do it, or walk it (PHILOSOPHY §3). Half points that same verb at the game
+instead of the scene. You say a line *about* the game ("this feels bad"), and something else continues it: an AI
+restates it in your words, a bot carries it, and a few minutes later a patch note in the game reads the sentence
+you spoke. That is what "creating and playing are nearly the same act" means mechanically, and it is why this tool
+belongs to Fixion and not to a bug tracker.
+
+The thing that makes it work is not the list. It is **recognition**. Think-aloud produces noise; its useful product
+is the moment you glance and go "yes, that's what I meant". What costs presence is *composing*: deciding what the
+bug is, how to phrase it, where it goes. Half moves composing to the AI and leaves the player only recognition,
+which costs almost nothing. And recognition at a glance is only possible if the AI's understanding is *visible at
+the periphery* as it forms. That is what the ChatGPT-cursor / Waymo intuition is for here: not charm for its own
+sake, but a way to trust a process you are not attending to.
+
+## 1. The feeling of Half
+
+Playing with a friend sitting beside you who is taking notes. You do not look at the notebook. You know it is being
+written. When you glance, it is in your words, and sometimes a bracket has quietly landed on Potts to say "this
+one, right?" Attention: about 90% in the scene, 10% peripheral awareness that your muttering is landing. The game
+is never smaller. The scene is never covered. Nothing in the room changes except a yellow outline you asked for.
+
+Entering Half changes exactly one thing: **what the mic means when you are not holding it.** Holding the mic is
+your character's line, as today. Not holding it, the room hears you. The channel is a gesture, not a mode you have
+to remember. Half is the feeling of being heard while you play.
+
+And at the far end of the loop: you walk out through the door into the street, and the chapter banner says
+*"Updated · figgs waits a beat before answering · Josh"*. Your complaint, in your words, with your name, came
+true while you were still in the scene. For a small Korean team, that sentence arrives in Korean.
+
+---
+
+## 2. Four directions, honestly
+
+Each was developed in full by a separate designer and argued against the others (`explorations/direction-*.md`).
+All four independently converged on three things, which are therefore not in question: **the push-to-talk button
+is the border between in-world speech and commentary** (never an AI classifier); **on iPad the game is boxed to
+9:16 and the tool lives beside it, on iPhone it rises from the bottom and never covers the map**; and **"fix" is a
+state an item reaches, not a kind of item.**
+
+### A. The Margin (the scribe at the edge)
+The game renders exactly as it ships; a quiet monospace rail (iPad) or a one-line ticker that rises into a sheet
+(iPhone) holds restated lines. The AI is a stenographer: a caret that moves between lines. Rations: lines appear
+once by churning, settle after a few seconds, never rewrite on their own (they accrue `²` or propose `*`), at most
+one visible change per 2.5 s, held during the stage's big moments, and rows never move while you could be looking.
+- Right: it protects the thing being tested, and it extends Fixion's own rules (no transcript while talking, rewrites
+  visible before they apply, timing is feel) to the tool. The outline as the AI's deixis guess, corrected by voice,
+  with the outline jumping as the receipt, is the best single interaction anyone proposed.
+- Wrong: too cold. Josh asked to *see* the AI work; a caret is a spinner with manners. It does nothing for the
+  bigger frame beyond a `✓ live` readout.
+
+### B. The Companion (귀, a listener in the scene)
+A tiny mute creature trails the player like a party member, covers its ears during PTT, scurries to the thing you
+meant and pins a tag on it; items are pins in space and in a time row along the map's top edge ("the sky").
+Split/merge shown as tags tearing and sliding together; it hops only after Live probation passes.
+- Right: understanding shown as motion where your eyes already are; the covered-ears pose makes the channel split
+  *visible and trustworthy*; the "author's writing notes are their own pile, never auto-fixed" rule.
+- Wrong: it spends presence to buy visibility in a game whose first principle is presence; a 15-column map already
+  has Buzz, the party follower and the cast; pins clutter; motion-based disambiguation is cute once and slow the
+  tenth time. Its own fallback ("same behaviours with the face removed, a reticle") is the right answer.
+
+### C. The Reel (moments first, items as captions)
+The unit is a moment: a koma of the instant you reacted (cut 0.5–3 s *before* speech onset, because people react
+after the thing), with your words, the AI's caption, the op window and a timing ribbon for pacing complaints; a
+filmstrip grows along the edge; "dailies" afterwards, by time and by item, exportable for the team; later,
+rehearsal: re-perform the moment under the fixed build for a before/after pair.
+- Right: it keeps the *evidence*, not the claim; the reaction-lag rule; Pin's honest focus hunt (hops through the
+  judge's real candidates, never fake); the review artifact for a Korean team.
+- Wrong: Josh asked for "this, this, this", a list of meanings, not pictures; thumbnails of a 15-col ASCII map at
+  40 px are mush and pull the eye harder than dim text; scrubbing is editing, and editing is leaving the scene.
+
+### D. The Living Pen (the loop closes while you play)
+Complaint → restated item → a bot on a worktree → `fixion_ship.py` → `live.rb` hot reload → a Live banner in the
+scene you are still in → your spoken verdict ("yeah that's it" / "no, worse") → kept or reverted. Risk tiers decide
+what may start by itself; model-facing text never does. The iPad shows only a glyph, an outline and the banner; the
+iPhone is the workshop.
+- Right: it captures the **verdict**, the comparative "better than it was" that lives in the body for minutes and
+  that every async workflow loses; the arrival gate (one change in front of a person at a time); credit on the
+  banner (`· 지연`): authorship by complaint, at team scale.
+- Wrong: it changes the thing you are evaluating while you evaluate it; the median wait is 8–10 minutes and the fix
+  finds you in a different beat; the most interesting Fixion complaints (the author's voice, Jev's reading) are
+  `needs-josh` by rule and cannot ride the fast lane; and the structural risk is attention: playtesting turns into
+  watching CI.
+
+### What was taken from each
+A's resting form and rations. C's data model (every item carries a moment) and dailies. B's presence, reduced to the
+one thing that may enter the game: the outline, given manners. D's payoff, moved to breath points and fitted with
+brakes. The discipline that keeps this from being a kitchen sink: **one presence, one list, one outline, one
+gesture grammar.**
+
+---
+
+## 3. The recommendation: Half, with Pin
+
+### 3.1 Names
+- **Half / 반**: the mode. Josh's phrase. One toggle; a state of mind: the room is listening.
+- **Pin / 핀**: the presence. Four hazard-yellow corner brackets. Korean film crews call focus 핀 ("핀 나갔다", the
+  focus is off). Pin is not a character and not a cursor with a face. **Pin is the outline.** The yellow outline Josh
+  asked for and the visible AI are the same object, so nothing else is ever added to the room.
+
+### 3.2 The channel: the gesture is the border
+- **PTT held** = your character's line. Unchanged. The commentary stream is hard-muted while PTT is held plus a
+  300 ms tail; commentary tokens overlapping a PTT window are discarded before any model sees them.
+- **PTT not held, Half on** = commentary. iOS Safari allows one microphone capture per page, so the page's existing
+  stream and worklet (`web/drdr-bridge.js:260-311`) are **forked** to a second Soniox socket; never a second
+  `getUserMedia`. Keys are minted with a longer `max_session_duration_seconds` than the game's 90 s single-use takes
+  (`sidecar/stt.py:48-55`), or sockets rotate with overlap. Cost about $0.12 per hour.
+- **The open mic can never write the screenplay.** If the judge thinks an open-mic segment was meant in-world, it
+  becomes a faint ghost row ("said without the mic") and nothing else. Fail-closed toward the screenplay, fail-open
+  toward a ghost row. A spurious line in the screenplay is a world change; a missed line is a shrug.
+- **Gate**: one Jev fan-out request per finalized segment (70–200 ms, the shape `sidecar/jev_client.py` already
+  uses) answers *channel* (commentary / in-world / aside / filler), *kind*, *about* (which of ≤10 on-screen things),
+  *same_as* (merge hint) and *is_correction*. P(commentary) ≥ 0.55 → a forming row; 0.30–0.55 → a ghost row, dim, no
+  outline, fades in 8 s unless promoted; < 0.30 → session log only. A second diarized speaker caps at ghost unless
+  ≥ 0.75, labelled `(옆사람)` / `(someone else)`, adopted by a tap.
+- **Mute**: long-press the listening mark, or say "stop listening" / "잠깐 듣지 마" (string match, no model).
+- **Privacy and the room (revised).** No raw audio is ever stored. Text from a second speaker or below the 0.30
+  gate is **never persisted**: only counts and timestamps. Half on is visible to the room (the margin header turns
+  hazard yellow and says `듣는 중` / `listening`), and the team opts in once before the first shared session. For a
+  shared room the supported setup is a close-talk mic (wired earbuds; Bluetooth hands-free would drop the game's
+  audio to call quality). Recording other people's conversations has legal weight in Korea (통신비밀보호법, and PIPA
+  for cross-border transfer to the STT vendor); this is a design constraint to get checked, not a footnote. Speaker
+  diarization on one far-field mic is unproven for short Korean utterances, so the `(옆사람)` label is a later
+  experiment, not a v1 claim: in v1 any non-primary speaker is a ghost at most.
+- Rejected: AI classification of one channel (a misroute writes dev talk into the screenplay, permanently); a second
+  gesture as the main channel (you lose the first two seconds of every reaction, which is where "this feels weird"
+  lives); a toggle that changes what PTT means (a mode you forget exactly when it matters).
+- Two devices (iPad plays, iPhone is the booth mic and notebook) is an optional setup that falls out of this design
+  and is the zero-game-change first slice (§9). It is never required.
+
+### 3.3 The surface
+
+**iPad landscape (home).** The game canvas is boxed to a phone's aspect at full height (390:844 by default,
+`?box=iphone15|9x16|off`), so `Layout` takes its portrait branch (`mygame/app/layout.rb:40`) and Josh playtests
+the phone game his players have. The honest reason for the box (revised): the landscape layout the iPad gets today
+(`layout.rb:69-87`: feed left, map centre, deck right) leaves no room for a margin; boxing is what makes a margin
+possible at all, and it should be Josh's call (open question 1). The box sits **flush left** against the bezel
+(walk pad about 70 pt from the edge, reachable; centred it would be ~280 pt away), the margin flush right, black
+only between them. The box is a page-level container; the game's pixels and logic are untouched. The margin is
+~300 pt, monospace, 34 columns (17 Hangul syllables). Items anchor to the bottom and grow upward, newest where the
+eye lands (like the feed, like a terminal); old rows scroll off the top; nothing reorders. Header: one line of exact
+readouts, `HALF · bar · t14 · 03:12 · ● ko/en`. Footer: counts. Pin parks on the margin's left edge beside the
+newest row.
+
+```
+iPad landscape, 1180 × 820 pt, bar, Half on (game flush left at a phone's aspect; margin flush right; black between)
+┌────────────────────────────────────────────────────────────────────────────────────────────┐
+│┌───────────────────────────┐                                       │ HALF  bar  t14  03:12  ● ko/en │
+││ FIGGS & POTTS        ♪ ≡  │                                       │────────────────────────────────│
+││   ┌──────────────────┐    │                                       │                                │
+││   │ NUAZ: He's drip- │    │                                       │ ~ figgs answers way too fast ² │
+││   │ ping on your flo-│    │                                       │ ~ nuaz card too long on phone  │
+││   └──────────────────┘    │                                       │ ! yara walked through table ✎  │
+││  |!!!.T.T.T.!!!|          │                (black)                │ = the join moment is perfect   │
+││  |.....F.......|          │                                       │ + let me walk while she talks▸·│
+││  |.==========.b|          │                                       │ ? did potts just teleport      │
+││  |..h.h.h.h..┌N┐          │ ← locked outline on Nuaz              │   → jev read "rolls over" as   │
+││  |&..........└─┘          │   (the row below is selected)         │     arrive, not walk           │
+││  |......@......|          │                                       │ ░░░░░░░░                       │
+││  ( ◁▷ )  ( TALK )  (ACT)  │                                       │┌┘                              │
+││  POTTS: Welcome…          │                                       │ 6 items · 1 started · 0 live   │
+│└───────────────────────────┘                                       └────────────────────────────────┘
+│ ~380 pt (390:844, phone layout; walk pad ~70 pt from the bezel)      ~300 pt, 34 cols, Pin parked ┌┘ │
+└────────────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+**iPhone portrait.** The game owns the screen. One line, the ticker, is a 44 pt strip just above the home
+indicator (revised: the 66 logical px `layout.rb` leaves free is ~36 pt, the safe area itself, so the strip overlays
+the deck's bottom padding, the emptiest band on the screen, and nothing else): the newest settled item, truncated at
+a syllable or word, plus `[n]`. **Tap, never swipe** (swipe-up is the home gesture). The sheet rises in 180 ms, ease-out, no
+bounce, to **the map's bottom edge and no further**: it covers the deck (pad, mic, ACT, feed) and never the map or
+the speech-card headroom. The game keeps running underneath; you are glancing, not pausing. While the sheet is up
+the mic means "talk to the selected item" (the deck's PTT is covered, so there is no ambiguity). Sink: tap the map,
+swipe the sheet down, or 8 s with no touch and no speech. Use it from the Home Screen web app so Safari's bottom bar
+does not eat the band.
+
+```
+iPhone 15, 390 × 844, 광수의 집         closed                         risen (tap the ticker)
+┌──────────────────────────────┐                      ┌──────────────────────────────┐
+│ 광수의 집              ♪  ≡  │                      │ 광수의 집              ♪  ≡  │
+│  ┌────────────────────────┐  │                      │  ┌────────────────────────┐  │
+│  │ 송 박사: 정신이 들어?  │  │                      │  │ 송 박사: 정신이 들어?  │  │
+│  └────────────────────────┘  │                      │  └────────────────────────┘  │
+│ |□□--""--□-o-|               │                      │ |□□--""--□-o-|               │
+│ |o==.....≡≡..|               │                      │ |o==.....≡≡..|               │
+│ |i==.....┌송┐|               │                      │ |i==.....┌송┐| ← locked      │
+│ |.........└─┘|               │                      │ |.........└─┘|               │
+│ |!...........|               │                      │ |!...........|               │
+│ |.....,,,,...|               │                      │ |.....,,,,...|               │
+│ |hh...,tt,...|               │  ← sheet top = map   ╞══════════════════════════════╡
+│ |b......@..SS|               │     bottom edge      │ HALF 광수의 집 t9 02:40 ● → #3│
+│ |.............|              │                      │ ~ 벽시계 소리 너무 거슬림     │
+│  (◁▷)    ( 말하기 )   (행동) │                      │ × 민수 대사 두 번 나옴        │
+│  민수: 야, 너 진짜 나 기억…  │                      │▌× 송 박사 갑자기 문앞에 서있음│
+│                              │                      │   heard "왜 얘가 갑자기 여기   │
+│┌┘~ 송 박사 갑자기 문앞에… [3]│ ← ticker, 44 pt band │          서 있어?"  .91       │
+└──────────────────────────────┘                      │   moment t8 02:31 · op 204    │
+         ▔▔▔▔▔                                        │   plan  걸은 경로 로그 확인 → │
+                                                      │ = 이 조용한 분위기 좋음, 유지 │
+                                                      └──────────────────────────────┘
+```
+
+**iPad portrait**: supported, not designed for (a one-glyph gutter). Turn the iPad sideways.
+
+**Look (Josh's Fiddle rules).** A true overlay that never resizes the game. `rgba(10,14,20,.82)` with blur, 1 px
+rules, `ui-monospace` 11–13 px (Noto Sans Mono CJK KR in Korean worlds, already shipped), uppercase 10 px
+letter-spaced labels, tabular numerals with units, square corners, 44 px targets. Colours the game already owns and
+Half never reuses: TALK_GREEN (the mic: "you are being heard"), MINT (player, live), AMBER (ACT), INSPIRE violet,
+party gold `[255,214,120]`. Pin and selection use hazard yellow **`#FFD400` `[255,212,0]`**, drawn as L-brackets
+(the sibling of Act mode's mint target brackets, `skin_ascii.rb:720-743`) plus a 1 px dashed frame when locked: the
+brackets say "same family as the game's own selection", the dashes say "not a game thing". No fill, no glow.
+
+### 3.4 Items
+
+**Kinds.** Josh's list (bug, comment, evaluation, request, fix) mixes three axes: what kind of thought, what
+happens to it, and how strongly it is felt. A kind earns a glyph only if it changes the plan or the glance.
+
+| glyph | kind | one-line test | default plan |
+|---|---|---|---|
+| `!` (red) | broke | the game did what the code does not intend; you could write a repro | repro + suspected file |
+| `~` | feel | works as built, but timing, size, tone, pacing or voice is off; you can only say more/less | a tunable + proposed value, in the Fiddle idiom |
+| `+` | want | something that does not exist yet | a scoped change |
+| `=` | keep | you liked it; protect it | pin the moment as a regression guard; every later bench gets it as "do not break" |
+| `?` | why | you do not know whether it was intended or what happened | **an answer**, from the op log, often with no dev work at all ("Jev read △ 'Potts rolls over' as arrive, not walk") |
+
+Five kinds (revised from six: `×` and `+` are one shape at two angles at 13 px, so broke is `!` in the game's red;
+a note to self with no game referent earns no glyph: it is a glyphless, indented row that never settles into the
+main list and lives in dailies). "Fix" is a state. "Comment" and "evaluation" fold into feel / why / keep.
+Ambiguity: pick the kind whose plan is more useful (a concrete wrong state is `!` even when phrased as a question).
+Not items: in-character speech, filler ("hmm", "음", "wait" on its own), asides to someone in the room, process talk
+("let's try Morrows"), and repeats, which accrue `²` on the existing row instead of making a new one.
+
+The `?` kind deserves a word. In a generative game most "bugs" are *readings*: Jev read a △ line one way, the author
+wrote something odd, the stage rolled back an op after a barge-in. "Did he just teleport?" is often answerable in
+one line from the op log, and the answer closes the item or turns it into a `×` or `~`. That is "a fully visual
+layer where you understand what's going on", and it costs no dev work.
+
+**Fields.** `id` (stable, never reused), `kind`, `said[]` (verbatim-ish, never shown big), `restated` (≤ 34
+columns), `about` {kind, id, label, p, alts, how}, `moment` {session, turn, seq_from, seq_to, t, koma, frames},
+`plan` (lazy: text, text_en, tier, files, tunable), `state`, `weight`, `lang`, `register`, `by`, `links`
+(merged_into, split_from). Schema in `explorations/pipeline.md` §1.
+
+**States, one vocabulary on every surface:**
+```
+░ heard   forming (70%)   settled   ✎ corrected   * proposed rewrite   ² said again
+▸·· started   ▸ testing   ↓ landing   ● live, on trial   ✓ kept   ↺ reverted   ✕ rolled back
+⚑ needs-josh   ·· merged ↑   ~~dismissed~~
+```
+
+### 3.5 The glance loop (the core craft)
+
+The failure this design must beat: the margin becomes a live transcript. Text that moves in peripheral vision is a
+magnet; a list that appears, retypes, merges and jumps while you are trying to hear Nuaz's reply makes the game
+*worse to test*, the one unforgivable outcome.
+
+1. **You never see your own words appear.** While you talk, a `░` block grows at the bottom, one per ~0.5 s. No
+   letters. This is the commentary channel's "green signal", the same rule the game has for PTT.
+2. **A row appears once, by churning, then is still.** The restatement churns in from Pin's position, left to right,
+   with the join banner's letter churn (`churn_text`, ~0.5 s for 30 columns).
+3. **Settle: 6 s** (tunable) after the row's last change and the last related speech. Forming rows are 70% bright and
+   may be rewritten in place if you keep talking about the same thing. Settled rows **never rewrite on their own**:
+   new speech adds `²`; if the wording should change, a trailing `*` proposal is shown only when the row is opened
+   (old struck through, new below). This is fix10's own rule, the rewrite visible before it is applied, turned on
+   the tool.
+4. **Change budget: at most one visible change per 2.5 s, shared between the margin and the game** (revised: a
+   glance in the game and a row change in the margin draw from the same budget). Changes queue; a burst of five
+   thoughts becomes five quiet changes over twelve seconds.
+5. **Hold during the stage's peaks**: a koma, a shake, a join banner, a chapter card, a speech card still typing
+   (max hold 3 s). Principle 9, timing is most of the feel, applies to the tool's timing too.
+6. **Rows never move while you could be looking.** A merged row becomes a dim `·· merged ↑` residue; a dismissed
+   row strikes through; both collapse only at **tidy moments**: PTT held (your eyes are on the scene), the iPhone
+   sheet closed, or 20 s untouched while a card is on stage. A split during forming appends below (nothing above
+   moves); after settle a split is a `*` proposal. A glanced list is a spatial memory ("the Potts thing is third
+   from the bottom"); jumping rows destroy it and turn every glance into a read.
+7. **Nothing blinks except Pin.**
+
+Expected rhythm: commentary comes in bursts (a minute of play, three sentences in ten seconds, nothing). A
+15-minute session yields 8–20 utterances and 5–12 items; with these rules the margin changes about once every 45 s,
+in clusters. That is a glance rhythm, not a feed.
+
+### 3.6 Pin: the visible AI
+
+Pin's whole personality is caution and politeness. The Waymo lesson is that what people love is the carefulness: the
+little stop at the crosswalk, the patience, the visible intent before the turn. Clippy's lesson is the hard rule:
+never speak first during play. Keepon's lesson is that two verbs are enough: **look** and **nod**.
+
+| state | where | look | motion |
+|---|---|---|---|
+| listening | parked at the margin's edge by the newest row (iPhone: the left end of the ticker) | brackets loose, slow breathe (1.1 s) | still |
+| hearing | parked | the brackets squeeze a notch as `░` grows | still |
+| **looking** (glance mode on) | brackets fade in **on the judge's top candidate in the game**, one landing, no hops, only when `about` p ≥ 0.7 (revised: visiting the runner-up first was theatre) | ~40% alpha for ~0.8 s: a **glance**, not a lock; the margin Pin leans toward the game at the same instant | fades out as the row churns in |
+| unsure (p < 0.7) | nothing enters the game; the row ends in `?` | the margin Pin hesitates one beat longer | |
+| **selected** (you tapped a row) | on the subject, **locked**: full yellow, 1 px dashed frame, label chip `NUAZ · ACTOR` / `#104 WALK` | follows a walking actor exactly | stays until deselect |
+| correcting | slides from the old subject to the new one | the move is the receipt | |
+| **PTT held** | folds flat into a short `‖` at the margin edge; the margin dims to 35% | a visible promise: *not listening to this* | nothing animates until 250 ms after release |
+| working | the row carries `▸··` step dots; Pin does not sit anywhere | one agent, one cursor: the bot's progress is the dots | |
+| landed and survived probation | double-blink | a quiet tick | |
+| rolled back | the row gets `✕` in the game's red | Pin does not pretend | |
+| muted | hollow brackets | still | |
+
+Rules: Pin never speaks first; never appears in a koma or a screenshot (it is drawn after `Live.draw`, the topmost
+layer, or by the page); brackets may surround an actor but Pin never occupies a cell; glances share the one change
+budget and never happen during a stage peak.
+
+**Default: quiet (revised).** The glance is the one exception to the discipline all four directions agreed on:
+nothing animates in the game that the game did not perform. The red team's point stands: a wrong line in the margin
+can be ignored until later, but a wrong flash in the scene asks to be checked *now*, and checking is dev-brain. So in
+slices 1–2 Half ships **quiet by default** (outline only when you tap a row), and the glance is an A/B Josh flips
+once, because he did ask to see the AI understand, and a bracket on Potts at 40% for under a second tells him what
+it understood before any text. When the glance is on it is one confident landing, never a hunt. Either way, the
+correction is the same: "no, the other guy", and the outline jumping to Yara is the most satisfying moment in the
+tool.
+
+Who draws what (revised): **no cross-surface travel.** Ruby draws everything inside the canvas (glance and lock) via
+`Playtest.outline`, because it must follow walkers and shake exactly and sit above the right layers (client-map
+§4.3). The page draws everything outside it: Pin's parked form and the rows. The link between the two is
+simultaneity and colour: the margin Pin leans toward the game at the instant the in-game brackets fade in. A bracket
+flying across the black would have to cross the bridge's 100 ms state throttle with 90 ms hops and would stutter. In
+the zero-game-change first slice the page draws nothing in the game at all.
+
+### 3.7 The grammar: tap, hold, talk, swipe
+
+Four verbs, the same count as the main kinds. Nothing in the game is tappable for the tool; the game's touches
+belong to the game (it uses multitouch: pad and mic together).
+
+- **Tap a row.** Yellow left bar; Pin locks on the subject; the row opens in place, drawn upward over older lines
+  so nothing moves, with exact readouts:
+
+  ```
+   ▌! yara walked through table ✎
+   │ heard   "wait why'd potts just walk through the table"   .88
+   │         "no not potts, the one who came in, the corner guy"  (correction)
+   │ about   actor:yara  (was actor:potts)
+   │ moment  t14 03:02  op 131 walk yara (4,9)→(7,9)  −1.4s   [▣ koma]
+   │ plan    join-walk path ignores occupied prop cells;
+   │         check stage.rb / world.rb path. auto tier.
+   │ hold to start · speak to correct · ← dismiss
+  ```
+  Every readout is exact: the verbatim in its original script, the restater's confidence, the target id (and what it
+  was before a correction), turn and session clock, the op that was performing, a koma of the moment captured from
+  the ring buffer ~1.5 s *before* speech onset (people react after the thing), and the plan with its ship tier.
+  Tap again, tap another row, or tap the game: deselect, outline off.
+- **Hold 600 ms = start.** A hairline fills under the row left to right (the PTT ring's hold-to-commit feeling);
+  release after full. The row shows `▸··`; the open view shows the bench's step readout (`wt fix-yara-path · reading
+  stage.rb · tests 3/5`). A plan that touches model-facing text still starts, but stops at a **draft**: `▸ ⚑
+  needs-josh`. The margin never makes that row look done (principle 11, by construction).
+- **Tap + talk = correct.** While a row is selected, the commentary channel is bound to it for 8 s after your last
+  word (header: `● → #3`). "this is actually the music, not the sfx" → the old line strikes through for 1.2 s, the
+  new one churns in, and `✎` stays forever (a trust signal). "not Potts, the guy in the corner" → only `about`
+  changes; Pin slides to Yara. "start this" / "이거 진행해" = hold. "nah forget it" / "됐어" = dismiss. "same as the
+  music one" = merge. Under the row for 3 s: `got it: target yara, not potts`, the restate loop at its smallest.
+  Corrections become session **style memory** (few-shots for the listener: "when Josh says 'the guy in the corner'
+  in the bar he means whoever entered last"). Without a tap, "no no I meant the other guy" binds to the item most
+  recently spoken about (≤ 20 s, Jev `is_correction` ≥ 0.6).
+- **Swipe left = dismiss** (strike, dim; undo by swiping right before the next tidy). **Swipe right = "this goes
+  with…"**: the row lifts, the other rows' glyphs brighten, tap one to merge into it. Vertical swipe: scroll; `↓ 2
+  new` snaps back after 10 s. Drag-to-merge was rejected: long-press-drag fights hold-to-start.
+
+### 3.8 Restating in your own words
+
+A row is a thought Josh would write on a sticky note to himself, in the language he said it in, ≤ 34 columns. The
+listener's rule is **the smallest edit to the verbatim that lets the line make sense later without the screen**:
+
+- Resolve 얘 / 이거 / he / this / that guy to the name from the moment when sure; drop filler; keep the speaker's
+  verbs, adjectives and hedges ("좀", "뭔가", "kind of", "I feel like"). Never add a cause, a solution or a judgement.
+  At most one hedged guess, as a question with `?`: `뭔가 좀 느려 (대답이?)`.
+- Subject first, then the feeling: `figgs answers way too fast`, not `the reply timing of Figgs feels too fast`.
+  Names as the world spells them (`송 박사`, `Nuaz`, `WHAM`); lower case English like a note; no period.
+- Name the thing even when Josh did not: "this is weird" + a moment where 송 박사 appeared at the door →
+  `송 박사 갑자기 문앞에 서있음`. The outline then confirms the guess.
+- Banned: "the user", "the player reports", "issue:", "observed", "UX", "사용자", "~현상", "개선 필요", "이슈", Title
+  Case, exclamation marks he did not use.
+
+Worked examples (from `pipeline.md` §3), the kind of line Josh should see:
+
+| said | row |
+|---|---|
+| "이거 좀 이상한데 왜 얘가 갑자기 여기 서 있어" (송 박사 just appeared beside the player) | `! 왜 송 박사가 갑자기 여기 서 있어` |
+| "아 이 느낌 좋다 이거" (0.4 s after a punch with shake + koma) | `= 방금 펀치 들어가는 느낌 좋다` |
+| "ACT 버튼 너무 아래 있는 거 아니야?" | `~ ACT 버튼 너무 아래 있는 거 아니야?` (already fits; untouched) |
+| "음... 뭔가 좀..." / "느려" (ghost, then promoted) | `~ 뭔가 좀 느려 (대답이?)` + readout `reply 3.1 s` |
+| "wait" / "did he just teleport" (Figgs moved 9 cells in one frame) | `? wait, did figgs just teleport` → answer line |
+| "this is great actually, keep this" (dusk fade just played) | `= this is great actually, keep this (the dusk fade)` |
+| "I feel like Figgs talks too much like an assistant" | `~ I feel like figgs talks too much like an assistant` → plan: `⚑ needs-josh` (author's voice) |
+| "no no I meant the other guy" (2.5 s later, no tap) | `? ~~wait, did figgs just teleport~~ → wait, did nuaz just teleport` and the outline moves |
+| "the menu text is tiny and also why is the music so loud" | one forming row, then on the pause: `~ the menu text is tiny` / `~ why is the music so loud in here` |
+
+### 3.9 Moments: the inside of every item
+
+Every item carries the moment it came from (Direction C's data model). Key: **(session, op seq)** (`seq` is the
+truth for the order of performance, ONTOLOGY §20); `(session, turn, tick)` when there is no op (a walk, an idle
+stretch, a menu open). The client keeps a ring buffer of ~60 op contexts plus a 2 Hz state frame for 10 s
+(`Playtest.record_op`, hooked at `Director#start`); the moment attached to an utterance is chosen inside
+`[onset − 1.5 s, onset − 0.6 s]` from the op window, and the readout shows its lead (`−1.4s`). Because the sidecar
+runs ahead of the screen, the client sends its `performed` seq with every utterance (one new field); the sidecar's
+`<sid>.jsonl` `line` records (`sidecar/session.py:1313`) then give the exact screenplay window.
+
+Picture: an in-game **moment card** via the koma pipeline (`render_moment`, a ~25-line copy of `render_koma`,
+`skin_fx.rb:540-568`, writing to a named render target), shown beside the locked outline in the koma's own white
+frame so it reads as the game's language. Export pixels: natively `outputs.screenshots` with a crop rect is proven
+(`dev.rb:184`); on the web the harness skips screenshots, so a same-frame canvas grab is a 30-minute spike. Data
+first, pixels second: the AI grounds on state, not on images.
+
+After a session: **dailies**, a page by time and by item (moment, verbatim, restatement, plan, verdict), exportable
+as one HTML file, Korean first with grey English mirrors. The same JSON is what a bot gets on "start". This is where
+"playing produced the footage; reading the footage is writing the next version" lands for the team.
+
+---
+
+## 4. The in-game selection + outline API (concrete)
+
+From `explorations/client-map.md` (every claim cited there against the tree). Almost everything a playtester can
+point at **already has a computable screen rect at draw time**; most rects are simply not kept after the frame. The
+fix is one new file and about ten one-line "keep the rect" edits. No model-facing text. Ship tier `auto`.
+
+**What is selectable, and what identifies it today**
+
+| kind | id today | rect | outline | note |
+|---|---|---|---|---|
+| actor / player | `actor.name` (`scene.actors`) | `layout.to_screen(*a.vpos)` ± 0.55 cell | L-brackets, follow `vpos` | newcomers get model-given names at runtime; stable for the session |
+| party chip | name | **not kept** → keep in `draw_party_strip` (`skin_fx.rb:668`) | box | |
+| cell / prop | `[x,y]` + `world.kind`, `world.prop_name` (legend `name`: "the bar counter") | exact cell rect | 1-cell bracket; multi-cell props = union of same-kind run or the region | |
+| region | `world.regions[i]` (`name`, `rect`) | corners via `to_screen` | dashed rect | names collide ("the tables"); use the index |
+| lasting mark | sidecar `s[:id]` (`stage.rb:365-378`) | the cell | bracket | |
+| speech card | `b[:seq]` = the op's seq (`dialogue.rb:48`) | **not kept** → `b[:rect]` in both `draw_bubble`s | frame 4 px outside | **transient**: gone `CLOSE_TICKS` after closing; fall back to the moment card |
+| op / beat | `op['seq']`, `op['turn']` | via its products (card, actor, koma, feed line) | outline the products | **consumed** (`queue.shift`, `director.rb:156`): hence the ring buffer |
+| feed line | **none** → add `id` + `seq` in `feed_line` (`director.rb:15-19`) and keep `@feed_rects` in `draw_feed` | per-frame rows | box | the most likely thing to be talked about (△ lines, red reasons, rewrites) |
+| koma | none → `seq: p.op['seq']` in `koma_for` (`stage.rb:287`) | `@koma_place` + `@koma_w/h` | frame | |
+| HUD: pad / mic / ACT / gear / ♪ / LIVE chip | fixed keys | `layout.pad / mic / act / gear`, `Live.chip_rect` | ring or square | |
+| action menu rows, slot, settings rows, tray slots | already kept (`player.menu_rows`, `menu_geo`, `settings_rows`, `InventoryTray.pack`) | kept | box | |
+| party banner, chapter card, Live banner | none / `rev` | computed | box | |
+| the mic's green signal | a state (`player.talking`, `audio_flowing?`) | mic circle | ring | **the one signal for "you are being heard"; never reuse green** |
+
+**The module** (`mygame/app/playtest.rb`, ~300 lines; full sketch in client-map §6):
+
+```ruby
+module Playtest
+  IN  = 'tmp/drdr-playtest-in.json'   # page → game, seq-gated like Live.read_in (live.rb:41-49)
+  OUT = 'tmp/drdr-playtest-out.json'  # game → page: ack, sel, rects, inventory rev, moment
+  YELLOW = [255, 212, 0]
+
+  def self.enable!(src)                 # bridge data['playtest'], CLI --playtest, a dev-plan step, or a Live-delivered file
+  def self.tick(game)                   # read IN, run commands (select / pick / snap / clear)
+  def self.command(game, cmd)           # also from Game#handle when ev['t'] == 'playtest' (second device via the sidecar)
+  def self.select(kind, id, seq_op=nil) # kinds: actor player party cell prop region stain bubble op feed koma hud menu_row setting banner
+  def self.rect_for(game, kind, id)     # logical rect [x,y,w,h] (y up) or nil; nil (:gone) is normal, not an error
+  def self.outline(rect, col, mode)     # :glance (40%, ~0.8 s) | :lock (brackets + 1 px dashed frame + label chip)
+  def self.draw(game)                   # after Live.draw (main.rb:640): topmost; falls back to the moment card when the target is gone
+  def self.record_op(game, op)          # hooked at Director#start: ring of 60 compact contexts keyed by seq
+  def self.moment(seq)                  # the context (+ png path when a snap was taken)
+  def self.inventory(game)              # actors, regions, stains, bubbles(seq), feed(id,seq), ops, koma, hud, menu, mode
+  def self.publish                      # OUT, only when something changed; every 2 ticks while a selection moves
+end
+```
+
+**Edits elsewhere**: `main.rb` (require, `Playtest.enable!` from the bridge flag, `tick`, `handle 'playtest'`, `draw`
+after `Live.draw`, `publish`; ~8 lines); `director.rb` (feed ids + `record_op`; ~4); both skins' `draw_bubble` and
+`draw_feed` (keep rects; ~7); `skin_fx.rb` (chip/koma/banner rects + `render_moment`; ~40); `stage.rb` (`seq` on the
+koma; 1); `web/drdr-playtest.js` (~150: `?playtest=1`, writes the bridge flag via a one-line `set` export from
+`drdr-bridge.js:643`, polls OUT, same-frame canvas grab on `snap`, the DOM margin/ticker/sheet and Pin); one
+`<script>` tag; `sidecar/playtest.py` (~100: `/api/playtest/cmd`, `/state`, `/snap`, SSE fan-out).
+
+**Channels.** Same device: two MEMFS JSON files, the pattern Bridge, Live and Fiddle already prove
+(`bridge.rb`, `live.rb:16-17`, Fiddle's `tmp/fiddle.json`). Second device: `POST /api/playtest/cmd` appends
+`{t:'playtest', …}` to the session's NDJSON stream, which the game already parses every tick (`net.rb:106-127`);
+`Game#handle` ignores unknown `t` today, so one `when 'playtest'` branch suffices; the game answers through
+`Net#post`, already session-stamped.
+
+**No-op in production.** `@on` is nil; `tick/draw/record_op` return on their first line; IN is not read until
+enabled. Stronger: the Fiddle pattern (`juice.rb:34-66` checks `const_defined?(:Fiddle)`): ship `playtest.rb` only
+in a Half dist, or deliver it **through Live** to Josh's page only (`drdr-live.js` targets pages by id), so Half
+arrives in a running game without a reload. An in-game "tap to pick" mode, if ever added, must swallow the tap like
+`Live.input_blocked?` or it also walks the player.
+
+**What is honestly hard**: speech cards are usually gone by the time you comment (fall back card → moment card →
+actor + feed line → data); ops are consumed and barge-in drops them silently (record at `receive` too, with
+`dropped: :barge|:truncate`, if "it skipped a line" matters); feed lines have no id today; the other view (inside vs
+street) has no rect; two skins (keep actor rects cell-based and accept slack); "what is under my finger" is ~60
+lines of reverse-draw-order hit testing; web screenshots are unverified; Act mode dims everything but its target,
+so a yellow outline on a dimmed actor reads as "the AI disagrees with the game" (draw over the dim, or pause the
+dim while an item is selected).
+
+**What the listener receives** (client-map §7): a compact JSON on every op start and player event, throttled to
+~4/s, with `op`, `performing` (gate, card shown chars, queue, thinking), `speaker`, `who_where` (cells, regions,
+posture, hp, party), `scene_now` (the sentence `Player#scene_now` already builds), `view`, `koma`, `player`
+(mode, talking, inspire, target, menu rows, slot), the last 6 `feed` lines with ids, banners, inventory, stains. The
+sidecar could compose most of it from ops and positions; only `performing`, `player.*`, `feed` as shown, `koma` and
+`who_where` as drawn need the client. The clean speech-vs-commentary boundary the code offers is `player.talking`.
+
+---
+
+## 5. iPad vs iPhone, decided
+
+| | iPad landscape (home) | iPhone portrait |
+|---|---|---|
+| game | boxed 9:16 at full height → phone layout, untouched | full screen, untouched |
+| the list | 300 pt rail, 34 columns, always visible, bottom-up | a one-line ticker in the home-indicator band; tap → sheet to the map's bottom edge |
+| Pin parks | on the rail's left edge by the newest row | at the ticker's left end |
+| while risen / selected | you can keep playing and read | the deck is covered: reading and playing are exclusive (the honest reason iPad is home) |
+| the mic while selected | commentary bound to the row; PTT still in-world | the sheet covers PTT: the mic means "talk to this row" |
+| tidy moments | PTT held; 20 s idle with a card up | sheet closed |
+| windowing | must survive iPadOS 26 windowed/tiled sizes down to about one third width (the rail collapses to the gutter) | Home Screen web app, so Safari's bar does not eat the band |
+| two devices | the iPad can also be the game while an iPhone is the booth | the iPhone is the booth: mic + notebook, paired by the session id through the sidecar |
+
+Why iPad is home: glancing sideways costs less presence than glancing down and covering the controls; the rail has
+room for Korean; and the phone-sized game in a dark frame is the most honest test of the phone experience Josh can
+get without a phone. The one engineering check before anything else: `drdr-bridge.js` `resize()` sizes the canvas
+from `window.innerWidth/Height` (`:48-55`); it must read a container for the box to work.
+
+---
+
+## 6. Korean and English
+
+- **Ears.** The commentary stream always runs Soniox with `language_hints: ["ko","en"]`, language identification
+  and speaker diarization on, and `context.terms` = the world's cast and prop names (the game already keeps these
+  per scene: `scenes.py:82-86, 219-223, 292-296`) plus UI words (ACT, koma, card, feed, Fiddle) plus team members'
+  names. The game's own PTT stream keeps its single per-world hint; nothing in the game's config changes. Soniox
+  revises token language tags mid-stream, so an item's language is decided only when the utterance ends.
+- **Rows match script and register (revised).** Korean rows keep **the speaker's own clause ending**, trimmed:
+  `피그스 대답 너무 빨라`, `시계 소리 너무 거슬리네`, `이 조용한 분위기 좋다, 이대로`. A bare noun phrase only if he
+  spoke in fragments; `~음/~함` only if he used it himself. The red team is right that 음슴체 is 개조식, the register
+  of a 보고서: a Korean teammate reads `대답 너무 빠름` as a QA log, not as "what I said". Never 해요체 or 합니다체 ticket
+  Korean (`개선이 필요합니다`). Soft target 10–12 syllables with the subject and the feeling in the first 8; hard cap
+  17. Mixed speech stays mixed (`Nuaz 대사 너무 길어`, `ACT 버튼 너무 아래`); English UI names stay Latin inside Korean;
+  Korean names stay Hangul inside English (`did 송 박사 just teleport`), never romanised.
+- **Stance endings are data, keep them.** `-네` marks a fresh observation (a feel item); `-잖아` marks a known,
+  recurring annoyance (a merge hint); a trailing `-는데…` is a soft, unresolved complaint (stays a draft, never
+  promoted to a plan on its own); "뭔가 좀" is kept verbatim, never sharpened into a diagnosis.
+- **Width in columns**: Hangul and CJK punctuation count 2, Latin 1; 34 columns = 17 syllables; the model is told
+  the budget and the counting rule; the UI never cuts mid-syllable. (Revised) `ui-monospace` on iOS is SF Mono, which
+  has no Hangul, and the fallback does not advance at exactly twice its cell, so mixed lines would jitter. Ship a
+  subset of **D2Coding** (OFL, a true 2:1 Hangul:Latin monospace that Korean developers already know; the repo has
+  `tools/make_korean_font.py` as the precedent) and restrict state glyphs to ones that subset draws at one column.
+  Measure, do not assume.
+- **The tool's own voice matches the player.** Ask-backs are rare (unresolved grounding at settle), short, and come
+  with the dashed outline so the words are almost redundant: `얘 말하는 거야?` in a 반말 session, `이분 말씀하시는
+  거예요?` only if the session is 존댓말. A service desk inside a diary is wrong.
+- **Ship lines.** The English mirror (`text_en`) fills `--summary` (≤ 140); the Korean restatement fills
+  `--flavor-ko` (≤ 70); `--by` comes from the device login (`민지 폰`), not from voice. `live.rb#show` already picks
+  `flavor_ko` in Korean worlds, so a Korean complaint arriving in the bar shows English and the same rev shows Korean
+  in 광수의 집. Showing `· 지연` on the banner itself needs `by` passed through `drdr-live.js` (one tier-2 rev) and a
+  line in `live.rb`: the smallest change that makes the team feel it.
+- **The author's Korean writing** (e.g. 히리야 상 sounding too fluent) is a note on Josh's prompt, which is the world.
+  It is filed as an evidence card (the complaint, the quoted lines, how often), never drafted as an edit.
+
+---
+
+## 7. The speech → items pipeline
+
+Frontier only. Soniox for ears, Jev (TypeSafe System One) for closed questions, `claude-opus-5-5` for every word
+that is written, Claude Code (Opus 5.5) for the bench. **No non-frontier model is used.** Flags: the game's Cerebras
+narrator is non-frontier and is not touched or reused here; if a local energy-gate VAD is ever added to save battery
+it is DSP, not a model; if the 2 s restatement target is missed the first lever is Opus fast mode, not a smaller
+model.
+
+```
+mic (one capture, one worklet) ──fork──► Soniox stt-rt-v5, 2nd socket  [hints ko+en · language ID · diarization · world+UI terms]
+          │                                     │
+      PTT held? ── yes ──► drop (+300 ms tail)  │ finalized segment (Soniox endpoint, or 700 ms quiet)
+                                                ▼
+   Jev, ONE fan-out request (~0.1 s): channel · kind · about (≤10 candidates built from the moment) · same_as · is_correction
+                                                │
+             P(commentary) ≥ .55 ──► FORMING row (glyph, no text) + Pin GLANCE at the top candidate      ≤ 0.7 s after speech end
+             .30–.55 ──► ghost row · < .30 ──► log only · Jev error ──► ghost (never a full row, never the screenplay)
+                                                ▼
+   LISTENER: claude-opus-5-5, streaming, structured output (DIFF schema, `restated` first in every op so it can paint early),
+             effort low. v1 is STATELESS (revised): cached system + few-shots (breakpoint 1), cached session header (breakpoint 2),
+             then a fresh tail = one line per live item + the last 8 utterances. The append-only session conversation with rebases
+             is v2, only if the eval shows missed merges with older items.
+             → ops: add / restate / split / merge / attach_moment / rekind / reground / drop (+ not_items, register)
+                                                ▼
+   CLIENT VALIDATOR enforces pacing (the model is told the rules; violating ops are deferred): first words ≤ 2 s (3.5 s hard;
+             if late the row keeps `░` and Pin hesitates with `?`: the verbatim is NEVER shown, revised) · restate ≤ 1/4 s per
+             item, never under a finger · split/merge only on a ≥ 2.5 s pause, items < 60 s · drop only forming rows ·
+             > 12 live rows → "+N earlier" stub
+                                                ▼
+   SETTLE (6 s quiet) ──► PLANNER: claude-opus-5-5, effort medium, background, cached on a repo map (ONTOLOGY "Code." lines +
+             Fiddle tunables); `?` items get an ANSWER from the op log; risk tier COMPUTED by fixion_ship.classify_risk on the
+             suspected files (unknown paths → needs-josh, fail closed)
+                                                ▼
+   HOLD = START ──► POST /api/playtest/start QUEUES (the sidecar is on the game host; agents are on the box) ──► box worker over the
+             SSH tunnel pulls the queue, writes prompt.md (restatement first, verbatim + corrections, about, moment, replay plan,
+             files, tier, prefilled ship line --by/--summary/--flavor/--flavor-ko), fixion_worktree.sh + run-agent.sh (Claude Code
+             Opus 5.5, 13–38 min observed) ──► fixion_ship.py (tests 19 s · PR → merge 3–7 s · live push 30–90 s)
+                                                ▼
+   ARRIVAL on the PLAYTEST LANE (revised: a separate Live head that only `?playtest=1` pages subscribe to) at a BREATH POINT
+             (chapter/door · settings open · ≥ 20 s idle with no card · "ok, ship them") AND only when the item's subject is on
+             stage; one at a time ──► live.rb hot reload + 180-tick probation ──► banner = the item's own line + `· 이름`
+                                                ▼
+   VERDICT: Jev judges the next commentary against the one item on trial: kept / reverted (lane revert) / partial (kept + a linked
+             follow-up) / silent after 3 min → UNJUDGED (never counted as kept). "kept" proposes PROMOTION to the global head,
+             which Josh (or a batch) does deliberately.
+```
+
+**Latency budget note (revised).** The 2 s first-words target sits on Opus 5.5's time to first token, and adaptive
+thinking cannot be turned off, only kept low. Measure p50/p90 on 50 recorded segments before promising it; fast mode
+is the lever if it is missed.
+
+**Grounding** (pipeline §4). Candidates from the moment at `onset − 0.6 s`: every actor on screen, props within 3
+cells, the open menu, the latest feed line or beat, visible UI, `moment`, `whole`. Decision order: a name in the
+speech → the tapped item → Jev top ≥ 0.55 with margin ≥ 0.20 (solid outline) → deixis tiebreak among Jev's top 3
+(dashed outline) → `moment` (no outline; one ask-back at settle). Person deixis (얘/쟤/he/that guy): tapped < 5 s →
+the actor that made a big visible change < 3 s (surprise is what makes people talk) → the speaker → the last
+addressee → the nearest; 쟤 / "over there" prefers far, 얘 / "this guy" prefers near. Thing deixis (이거/this): the
+open menu or last tap → the last beat with fx < 3 s ("이 느낌" means the beat) → the last feed line → `moment`.
+
+**Latency budget.** Forming row ≤ 0.7 s; first restated words ≤ 2 s target, 3.5 s hard; settled ≤ 8 s; correction
+≤ 2 s (bound utterances skip the queue); plan on tap instant (precomputed at settle).
+
+**Cost.** About $3.5–4 per hour of talkative play (listener ≈ $2.4 with caching, planner ≈ $1, Jev ≈ $0.02, Soniox
+$0.12); ≈ $6–7 with Opus fast mode. Coding runs are priced by BOT_WORKFLOW. The tool logs spend to its own ledger path
+and uses its own key: the game has one hard $15 cap across providers and a shared OpenRouter key that disables itself
+below $10 remaining (`ledger.py:18`, `openrouter_client.py:35-50`); Half must never trip either.
+
+**Endpoints** (sidecar-map §7): `POST /api/playtest/utterance` (text, t, lang, `performed`, on_screen) → builds the
+moment from `Session.state()`, logs, kicks Jev then the listener as a background task; `GET /api/playtest/items`
+(NDJSON stream of item diffs and `ai` events for Pin, its own id counter, same pattern as `api_stream`); `POST
+/api/playtest/select` → `{t:'playtest_select'}` on the game's own stream; `POST /api/playtest/correct`; `POST
+/api/playtest/start` (queue only; worker endpoints behind a shared secret or tunnel-only). State:
+`DATA/playtest/<session>.jsonl`, append-only, items rebuilt by folding (the `pending_actions.jsonl` precedent); add
+`playtest/` to the server log export. Note the ship scan: the Jev question text in `sidecar/playtest.py` will trip
+the `jev|criteria|prompt` word scan and land `needs-josh`, which is right: every model-facing word is reviewable,
+and these are ours to show him.
+
+**Evaluation** (pipeline §9). Record 6–10 real sessions (Josh + two Korean teammates, at least 3 Korean-world); freeze
+3 as held-out; hand-label channel, item boundaries, kind, about, and a "gold" restatement written by the speaker the
+next day. Metrics: time-to-glance-recognition (show the row for 1.2 s beside 4 moment thumbnails, pick the right
+one: ≥ 90%, median ≤ 1.5 s), "that's mine" rate (blind: restatement vs gold vs ticket paraphrase: beats ticket ≥
+90%), correction rate (< 15% restate, < 10% reground), split/merge regret (< 5%), churn (≤ 2 changes before
+settle), false items < 3%, missed thoughts < 5%, grounding ≥ 85%. Jev as a cheap live canary on every restatement:
+`register_matches`, `adds_claim`, `ticket_speak` (≥ 0.6 → regenerate once with the verbatim emphasised). Blind A/B of
+prompt variants with Josh on his phone between sessions, 20 pairs at a time.
+
+---
+
+## 8. The living pen, with brakes
+
+What Direction D gets right is kept; what it risks is fenced.
+
+- **The playtest lane comes first (revised, the red team's top objection).** Live has one global head
+  (`web/drdr-live.js:2`: "only the server head persists"; `sidecar/live.py`), so a fix "arriving at Josh's next door"
+  would be a production deploy to every player, and a spoken "no, worse" a production rollback. Before anything
+  ships from Half, `fixion_ship.py` gets `--lane playtest`: revs on that lane go to a separate head
+  (`/api/live/events?lane=playtest`) that only `?playtest=1` pages subscribe to. Promotion to the global head is a
+  separate, deliberate act that a `✓ kept` verdict proposes and Josh (or a nightly batch) performs. Breath-point
+  gating is new code in `Live.ready_for?` (today tier 0 applies at once, `live.rb:51`) and only gates the
+  playtester's own client. Without the lane, slice 3 does not exist.
+- **Hold = start.** No auto-start in v1. (D's "A0 nudges start themselves for Josh after a 10 s countdown" is an
+  opt-in setting for later; a hold is cheap and a countdown is a mode.)
+- **Arrival at breath points, and only when the subject is on stage** (revised), never mid-beat, and **one arrival
+  at a time** so "yeah that's it" binds to one change. A bench run is 8–10 minutes and the next door may be ten more;
+  if the fix lands where its subject is absent, the verdict is lost. So arrival waits for the item's actor to be
+  present, its UI element visible, its world the same; if that never happens, the fix is delivered with a
+  **rehearsal**: the moment's ops re-performed under the new build beside the original (pulled forward from slice 4
+  to slice 3 as the verdict instrument). Silence is **unjudged**, never "kept". The Live banner carries the item's
+  line as its flavor and the complainer's name. The patch note Josh sees in the game is the sentence he spoke.
+- **`=` keeps are guards.** Every later bench prompt lists the session's keeps as "do not break"; a keep pins its
+  moment as a golden capture.
+- **Two kinds of needs-josh.** *Our* model-facing text (Jev questions, scribe prompts, reason templates, labels): the
+  bench drafts the exact before/after and the tool shows it **raw** (monospace, both sides in full, one line of why in
+  the complainer's words); Josh's yes runs `--approve`. *Josh's author prefix* (the sha256-checked world): never
+  drafted; an evidence card only.
+- **Sidecar fixes restart the room.** A sidecar change restarts the service and loses in-memory sessions
+  (`BOT_WORKFLOW.md:140-155`); the plan says "this one restarts the room" and the planner prefers client-side tier-0
+  fixes that keep state ("prefer the fix that lands at tier 0" is a planner rule).
+- **The verdict is the artifact.** A session's list is not a backlog; it is a record of which feelings were fixed,
+  which fixes the body accepted, and which it rejected. Dailies show it.
+- **Brakes against watching CI**: the game device never shows the pipeline (glyph, outline, banner only); no progress
+  bars or ETAs; cap 2 benches and 1 arrival; "let's just play" / "그냥 하자" puts Half in quiet mode (still listening,
+  nothing starts or arrives); three bad landings in a row → Half proposes parking the rest. The metric to watch is
+  the share of session time spent in the scene; under ~70% the tool is failing even if every fix lands.
+
+---
+
+## 9. Build plan
+
+The smallest slice first, because three questions decide whether any of the rest is worth building: *does talking
+while playing feel free; do the lines sound like Josh in both languages; is the list quiet enough.* None of them
+needs the outline.
+
+**Day 0, the offline test (one evening, about $1; revised, from the red team).** Before any UI: Josh plays one
+20–30 minute session on the iPad with iOS screen recording on, an iPhone voice memo running beside it, one clap to
+sync. Pull the session's `<sid>.jsonl`. Run the memo through Soniox, the Jev gate and the listener prompt twice:
+once with PTT windows taken from the log's `say` timings, once without. Next day, show Josh (and one Korean
+teammate, on a Korean session) the two lists beside the video and measure: in-character lines leaked as rows, the
+correct-target rate, and the blind "that's mine" pick against a ticket-style paraphrase in both Korean registers
+(own ending vs 음슴체). This is the cheapest test of the one feeling the tool sells, *it understood me*, and it
+settles the PTT-gating and register questions before a pixel is drawn.
+
+**Slice 0, the booth (2–3 days, one tiny sidecar PR).** iPad plays Fixion as today. The iPhone, **propped beside it,
+screen on, Auto-Lock off** (a locked page loses the mic: `drdr-bridge.js:508-525` releases it on `pagehide`), opens
+a standalone page from `playtest-voice/`: open mic → a tiny service of ours behind the site's team login (mints
+Soniox keys with a long max session, calls Jev and Opus, tails the game's `GET /api/stream?session=` for ops as
+moments) → the margin as a phone page: `░`, churn, settle, `²`, tap → verbatim, confidence, the recent lines at that
+moment (from the emitted stream, so 1–4 s ahead of the screen: labelled as such); tap + talk → strike-through
+correction; swipe → dismiss; "copy as brief" for a Claude Code session. No outline. Session JSONL (primary speaker
+only) starts the eval set. The one game-side change, `auto` tier, about three lines (revised): on the web the game
+posts only `/api/warm reason=ptt` on mic press and nothing on release (`player.rb:253-266`; `/api/ptt` is the
+native-desktop path), so the booth cannot see the PTT window it must mute. Emit `{t:'ptt', state:'down'}` from
+`api_warm(reason='ptt')`, post an `up` on release, and show the session id as a 4-digit code in Settings so the
+iPhone can pair without typing. Why two devices: the live site answers `X-Frame-Options: DENY` and `frame-ancestors
+'none'`, so a boxing page cannot iframe it, and WebKit allows one mic capture at a time, so two Safari windows on
+one iPad would fight over the microphone. Two devices is also the setup a Korean team in one room will use.
+
+**Slice 1, Half in the page (week 2).** First a half-day spike (revised): boxing the canvas needs more than the
+bridge's `resize()` reading a container; DragonRuby's HTML5 loader caches `window.innerWidth/innerHeight` and the
+SDL wasm reads them in several handlers, so the workable trick is the one `drdr-dpr.js:17` already uses for
+`devicePixelRatio`: override the getters. Test it on a local build before believing it. Then `web/drdr-playtest.js`
++ css: the margin (iPad) and the ticker/sheet (iPhone), the phone-aspect box, the single mic forked to a second
+Soniox socket gated by `pttDown`, Pin drawn by the page, quiet by default, `?playtest=1`. Ruby `playtest.rb`: outline (glance + lock), the keep-the-rect edits, the
+`record_op` ring, the bridge flag, `performed` sent with each utterance. Ship `auto`; Half can be delivered to
+Josh's page through Live without a reload.
+
+**Slice 2, moments and manners (week 3).** The moment card via `render_moment`, the web pixel spike, the full Jev
+fan-out, split/merge on pause, plans with `classify_risk`, `?` answers from the op log, exact readouts, Korean
+register tuning from three real sessions, the eval set.
+
+**Slice 3, the pen (week 4+).** The playtest lane in `fixion_ship.py` / `sidecar/live.py` / `drdr-live.js` first;
+then hold → queue → box worker → Claude Code → `fixion_ship.py --lane playtest`; breath-point arrival with the
+subject on stage; the rehearsal before/after as the verdict instrument; the banner credit (`by` through
+`drdr-live.js`, one tier-2 rev); the verdict and promotion; `=` guards in bench prompts; raw before/after cards for
+needs-josh.
+
+**Slice 4, the team.** Dailies and export (Korean first), Apple Pencil hover to preview an outline before tapping,
+pairing polish, the `(옆사람)` diarization experiment, opt-in auto nudges.
+
+---
+
+## 10. Risks, named
+
+- **Too quiet to trust**, so Josh holds thoughts in his head again. The `░` placeholder and Pin's glance are the
+  receipts; if they are not enough, a one-time quiet tick when an item settles. No sound beyond that.
+- **The glance annoys.** Then "quiet" mode, and Half is Direction A. The ration (2.5 s, off the peaks) is a guess
+  to be tuned on Fiddle-style readouts like everything else.
+- **Deixis is wrong a lot early.** The outline makes every error visible at a glance, which is the point, but a tool
+  whose first ten guesses are wrong feels dumb. Style memory from corrections is the mitigation; `?` is the honesty.
+- **The 9:16 box fights DragonRuby** (canvas sizing). If it cannot be boxed, the iPad story degrades to the landscape
+  layout plus a rail, which tests the wrong layout. Check first.
+- **Open mic in a room full of teammates.** A privacy and noise cost. Mute is one gesture, the gate filters, and a
+  second speaker caps at ghost; someone will still get filed. Acceptable only because dismissing is one swipe and
+  nothing ships without a hold.
+- **A narrow column compresses nuance** into telegrams that stop sounding like Josh. The row is an index, the open
+  view is the content; the eval's "that's mine" rate watches for this.
+- **The fast lane covers less than hoped.** If most complaints are about the author's voice (needs-josh), Half is a
+  very good notebook with evidence cards, and the pen is a feature, not the point. Slice 0 measures the mix.
+- **Diarization in a noisy room** is the weakest link in the pipeline; the iPhone-as-booth setup and earphones are
+  the honest answer for shared rooms.
+- **A playtest fix is a production change** unless the lane exists (§8). This is the one risk that is not a matter
+  of taste; it is why slice 3 is gated on the lane.
+- **Recording teammates** has legal weight in Korea (§3.2). Get it checked before the first shared-room session.
+- **The week-one failure** the red team predicts: the list stops sounding like Josh and stops pointing at the right
+  thing within twenty minutes, because in-character lines leak (no PTT window), moments run ahead of the screen, and
+  Korean rows come back in report register; he quietly goes back to telling a Claude Code session afterwards. Day 0
+  exists to catch all three before a pixel is drawn.
+
+## 11. Open questions for Josh
+
+1. **iPad.** Is boxing the game to the phone layout what he wants to playtest, or the landscape layout his iPad gets
+   today? And the inverted setup is worth a real look: **the iPhone plays** (the real device, real thumbs) and **the
+   iPad is the margin** and, later, the dailies screen. It is the cheapest honest layout and needs no boxing at all.
+2. Glance on, or quiet by default (outline only on tap)? Settle time 4 s or 6 s?
+3. Should small nudges (one constant, one file) ever start themselves after a countdown, or always a hold?
+4. Names: Half / 반 and Pin / 핀, or his own.
+5. Is the team comfortable with an open mic in the room on the terms in §3.2 (no audio stored, nothing from other
+   speakers persisted, a visible "듣는 중")?
+
+---
+
+*Everything here is designed; nothing under `/workspace/fixion-wt` was changed. The prototype at
+`prototype/index.html` is a mock with fake data and a fake AI, to make the feeling tangible on an iPad or iPhone.*

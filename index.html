@@ -1,0 +1,1052 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Half · Fixion playtest prototype</title>
+<style>
+  :root {
+    --ink: #000; --panel: rgba(10,14,20,.82); --rule: rgba(36,48,64,.9); --lab: #9aa8b6; --sub: #5a6878; --val: #e8eef6;
+    --row: rgba(232,238,246,.78); --yellow: #FFD400; --red: #ff5c5c; --mint: #6fe2c7; --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --ko: "Noto Sans Mono CJK KR", "Noto Sans CJK KR", "Apple SD Gothic Neo", "Noto Sans KR", "Noto Serif CJK SC", ui-monospace, monospace;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; background: var(--ink); color: var(--val); font-family: var(--mono); font-size: 12px; overflow: hidden; overscroll-behavior: none; }
+  body.ko .panel, body.ko .ticker, body.ko .booth, body.ko .row { font-family: var(--ko); }
+  #stage { position: fixed; inset: 0; }
+  #game { position: absolute; display: block; background: #10171f; touch-action: none; }
+  .chrome { user-select: none; -webkit-user-select: none; }
+  .lab { font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--lab); }
+  .sub { font-size: 9px; color: var(--sub); letter-spacing: .04em; }
+  .num { font-variant-numeric: tabular-nums; }
+
+  /* ---------- the margin / sheet (one element, two homes) ---------- */
+  .panel { position: absolute; background: var(--panel); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); display: flex; flex-direction: column; border-left: 1px solid var(--rule); }
+  .panel.dim { opacity: .35; }
+  .panel .hdr { height: 32px; display: flex; align-items: center; gap: 8px; padding: 0 10px; border-bottom: 1px solid var(--rule); white-space: nowrap; }
+  .panel .hdr .t { color: var(--lab); font-size: 11px; letter-spacing: .08em; font-weight: 700; }
+  .panel .hdr .r { color: var(--val); font-size: 11px; }
+  .panel .hdr .mic { color: var(--val); } .panel .hdr .mic.off { color: var(--sub); }
+  .panel .hdr button { background: none; border: 1px solid transparent; color: var(--lab); font: inherit; font-size: 11px; padding: 6px 6px; min-height: 28px; }
+  .panel .hdr button.on { color: var(--val); border-color: var(--rule); }
+  .panel .list { flex: 1; overflow-y: auto; overflow-x: hidden; display: flex; flex-direction: column; padding: 8px 0 6px; scrollbar-width: none; }
+  .panel .list::-webkit-scrollbar { display: none; }
+  .panel .ftr { height: 26px; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0 10px; border-top: 1px solid var(--rule); color: var(--sub); font-size: 9px; letter-spacing: .03em; white-space: nowrap; overflow: hidden; }
+  .row { position: relative; flex-shrink: 0; display: grid; grid-template-columns: 20px 1fr 26px; align-items: start; min-height: 24px; padding: 3px 8px 3px 8px; color: var(--row); font-size: 12px; line-height: 18px; transition: opacity .3s; }
+  .row:first-child { margin-top: auto; }
+  .row.forming { opacity: .7; } .row.ghost { opacity: .32; } .row.residue { opacity: .35; } .row.dismissed .txt { text-decoration: line-through; opacity: .5; }
+  .row .gut { color: var(--lab); text-align: center; } .row.k-broke .gut { color: var(--red); } .row.sel.k-broke .gut { color: var(--red); }
+  .row .txt { white-space: pre; overflow: hidden; text-overflow: clip; }
+  .row .st { color: var(--sub); text-align: right; font-size: 11px; white-space: nowrap; } .row .st .sup { vertical-align: super; font-size: 9px; }
+  .row.sel::before { content: ''; position: absolute; left: 0; top: 2px; bottom: 2px; width: 3px; background: var(--yellow); }
+  .row.sel .txt, .row.sel .gut { color: var(--yellow); }
+  .row .hold { position: absolute; left: 8px; right: 10px; bottom: 0; height: 1px; background: var(--yellow); transform-origin: left; transform: scaleX(0); }
+  .row.holding .hold { transition: transform .6s linear; transform: scaleX(1); }
+  .row .strike { grid-column: 2; color: var(--sub); text-decoration: line-through; font-size: 12px; white-space: pre; overflow: hidden; }
+  .row .ans, .row .got { grid-column: 2 / 4; color: var(--sub); font-size: 11px; white-space: pre-wrap; }
+  .row .ans::before { content: '↳ '; }
+  .row.st-live .gut { color: var(--mint); } .row.st-kept .st { color: var(--mint); } .row.st-reverted .st, .row.st-rolled .st { color: var(--red); }
+  .row.merge-target { outline: 1px dashed var(--rule); }
+  .list.merging .row:not(.merge-src):not(.residue) .gut { color: var(--val); }
+  .open { grid-column: 1 / 4; padding: 6px 2px 8px 22px; display: grid; grid-template-columns: 56px 1fr; column-gap: 8px; row-gap: 3px; font-size: 11px; color: var(--val); border-top: 1px solid rgba(36,48,64,.5); margin-top: 4px; }
+  .open .k { color: var(--lab); font-size: 10px; letter-spacing: .06em; text-transform: uppercase; padding-top: 1px; }
+  .open .v { white-space: pre-wrap; word-break: break-word; }
+  .open .v.q { color: var(--row); } .open .v.q .conf { color: var(--sub); }
+  .open .v .was { color: var(--sub); }
+  .open .koma { grid-column: 1 / 3; display: flex; gap: 8px; align-items: flex-start; }
+  .open .koma img { width: 132px; border: 2px solid #fff; outline: 1px solid #4a7ab8; outline-offset: -4px; image-rendering: pixelated; background: #10171f; box-shadow: 0 2px 6px rgba(0,0,0,.6); }
+  .open .koma .cap { color: var(--sub); font-size: 10px; line-height: 14px; }
+  .open .tier.nj { color: var(--yellow); } .open .tier.auto { color: var(--lab); }
+  .open .hint { grid-column: 1 / 3; color: var(--sub); font-size: 10px; letter-spacing: .04em; padding-top: 4px; }
+  .open .steps { color: var(--lab); }
+
+  /* Pin: four corner brackets, the one body. Parked in the margin; leans (never crosses the black); folds flat during PTT. */
+  #pin { position: fixed; width: 18px; height: 18px; pointer-events: auto; transition: left .09s linear, top .09s linear, opacity .2s, transform .25s; z-index: 30; }
+  #pin i { position: absolute; width: 6px; height: 6px; border: 2px solid var(--yellow); }
+  #pin i:nth-child(1) { left: 0; top: 0; border-right: 0; border-bottom: 0; }
+  #pin i:nth-child(2) { right: 0; top: 0; border-left: 0; border-bottom: 0; }
+  #pin i:nth-child(3) { left: 0; bottom: 0; border-right: 0; border-top: 0; }
+  #pin i:nth-child(4) { right: 0; bottom: 0; border-left: 0; border-top: 0; }
+  #pin.listening { animation: breathe 1.1s ease-in-out infinite; }
+  #pin.hearing { transform: scale(.78); animation: none; }
+  #pin.muted i { border-color: rgba(255,212,0,.35); border-style: dotted; } #pin.muted { animation: none; }
+  #pin.folded i { display: none; } #pin.folded::after { content: '‖'; color: rgba(255,212,0,.6); position: absolute; left: 3px; top: -3px; font-size: 16px; font-weight: 700; }
+  #pin.away { opacity: 0; }
+  body.ipad #pin.lean { transform: translateX(-7px) scale(1.08); animation: none; }
+  body.iphone #pin.lean { transform: translateY(-7px) scale(1.08); animation: none; }
+  @keyframes breathe { 0%,100% { transform: scale(1); } 50% { transform: scale(1.12); } }
+
+  /* ---------- iPad: the rail ---------- */
+  body.ipad .panel { top: 0; bottom: 0; right: 0; width: 300px; }
+  body.ipad .ticker { display: none; }
+  body.ipad .booth { position: absolute; top: 0; bottom: 0; border-left: 1px solid var(--rule); background: rgba(10,14,20,.4); }
+
+  /* ---------- iPhone: the ticker and the sheet ---------- */
+  body.iphone .panel { left: 0; right: 0; bottom: 0; height: 44%; border-left: 0; border-top: 1px solid var(--rule); transform: translateY(100%); transition: transform .18s ease-out; }
+  body.iphone .panel.risen { transform: translateY(0); }
+  .ticker { position: absolute; left: 0; right: 0; bottom: env(safe-area-inset-bottom); height: 44px; padding: 0 14px 0 34px; display: flex; align-items: center; gap: 10px; background: linear-gradient(to top, rgba(10,14,20,.92), rgba(10,14,20,.55)); color: rgba(232,238,246,.45); font-size: 11px; white-space: nowrap; overflow: hidden; }
+  .ticker .gut { color: var(--lab); } .ticker .n { margin-left: auto; color: var(--sub); }
+  body.iphone .booth { position: absolute; left: 0; right: 0; top: 0; padding-bottom: 0; gap: 4px; background: rgba(10,14,20,.94); border-bottom: 1px solid var(--rule); max-height: 46%; transform: translateY(calc(-100% + 24px)); transition: transform .18s ease-out; }
+  body.iphone .note { display: none; }
+  body.iphone .booth.open { transform: translateY(0); }
+  body.iphone .booth .tab { display: block; }
+  .booth .tab { display: none; order: 99; width: 100%; height: 24px; background: none; border: 0; color: var(--lab); font: inherit; font-size: 10px; letter-spacing: .08em; }
+
+  /* ---------- the booth (prototype chrome: canned speech) ---------- */
+  .booth { display: flex; flex-direction: column; padding: 10px 10px 8px; gap: 6px; overflow: hidden; }
+  .booth .lab { padding: 2px 2px 4px; }
+  .booth .chips { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; scrollbar-width: none; }
+  .booth .chips::-webkit-scrollbar { display: none; }
+  .booth button, .booth input { font: inherit; font-size: 11px; color: var(--val); background: transparent; border: 1px solid #2a3a4e; min-height: 36px; text-align: left; padding: 6px 8px; white-space: normal; line-height: 14px; }
+  .booth button:active { background: #1a2430; }
+  .booth button.cmd { color: var(--lab); text-transform: uppercase; letter-spacing: .06em; font-size: 10px; font-weight: 700; min-height: 32px; }
+  .booth button.cmd.go { color: var(--mint); border-color: #2a4e46; }
+  .booth .sayrow { display: flex; gap: 4px; } .booth .sayrow input { flex: 1; min-width: 0; } .booth .sayrow button { min-width: 44px; text-align: center; }
+  .booth .bound { color: var(--yellow); font-size: 10px; min-height: 14px; }
+  body.iphone .booth .chips { max-height: 30vh; }
+  .note { position: fixed; left: 8px; bottom: calc(4px + env(safe-area-inset-bottom)); color: #3a4858; font-size: 9px; letter-spacing: .04em; pointer-events: none; z-index: 5; }
+  body.iphone .note { left: auto; right: 8px; top: 28px; bottom: auto; }
+  .listenmark { position: absolute; }
+</style>
+</head>
+<body class="chrome">
+<div id="stage">
+  <canvas id="game"></canvas>
+
+  <div id="booth" class="booth chrome">
+    <button class="tab" id="boothTab">BOOTH ▾ · prototype: fake game, fake AI, canned speech</button>
+    <div class="lab">Booth · canned speech <span class="sub">(prototype; the real tool hears you)</span></div>
+    <div class="bound" id="bound"></div>
+    <div class="chips" id="chips"></div>
+    <div class="sayrow"><input id="say" placeholder="say…" autocomplete="off"><button id="sayBtn">▶</button></div>
+    <button class="cmd go" id="demo">AUTO DEMO ▶</button>
+    <button class="cmd" id="door">walk out the door →</button>
+  </div>
+
+  <div id="panel" class="panel chrome">
+    <div class="hdr">
+      <span class="t">HALF</span>
+      <span class="r" id="hWorld">bar</span>
+      <span class="r num" id="hTurn">t1</span>
+      <span class="r num" id="hClock">00:00</span>
+      <span class="mic" id="hMic">●</span>
+      <button id="hLang">en</button>
+      <button id="hQuiet" class="on" title="outline only on tap (the v1 default)">quiet</button>
+    </div>
+    <div class="list" id="list"></div>
+    <div class="ftr"><span id="fCounts">0 items</span><span id="fState">listening</span></div>
+  </div>
+
+  <div id="ticker" class="ticker chrome"><span class="gut" id="tGut"></span><span id="tTxt">HALF · listening</span><span class="n num" id="tN"></span></div>
+  <div id="pin" class="listening"><i></i><i></i><i></i><i></i></div>
+  <div class="note">PROTOTYPE · fake game, fake AI, canned speech</div>
+</div>
+
+<script>// game-mock.js — a FAKE Fixion view for the playtest-voice prototype (also inlined into index.html; keep in sync).
+// Mimics the ASCII skin (ink background, glyph map, shadowed actor glyphs with accent underlines, cream speech
+// cards, feed under the deck). Everything here is fake data; nothing talks to the real sidecar.
+//
+// Exposes the surface the real in-game Playtest module would (DESIGN.md "Selection + outline API"):
+//   GameMock.mount(canvas)                 draw loop at 720x1280 logical, scaled to the canvas size
+//   GameMock.inventory()                   [{kind,id,label,rect}] every selectable thing right now
+//   GameMock.rectFor(kind,id)              {x,y,w,h} in logical px (y down) or null
+//   GameMock.outline(kind,id,opts)         opts: color, ttl(ms), alpha, mode 'glance'|'lock', dashed, label, question
+//                                          outline(null) clears everything
+//   GameMock.moment()                      compact JSON of "what is on screen" (what the listener gets)
+//   GameMock.snapshot(rect)                dataURL of the current frame cropped to rect (logical px)
+//   GameMock.busy()                        true while a speech card is still typing (a stage peak)
+//   GameMock.ptt(down)                     simulate push-to-talk (green talk indicator, no transcript)
+//   GameMock.chapter()                     the player walks out: chapter card over the map (a breath point)
+//   GameMock.banner(title, body, by)       a Live-style update banner under the header
+//   GameMock.setLang('en'|'ko')            bar (EN) or 광수의 집 (KO)
+//   GameMock.hit(x,y)                      best selectable thing under a logical point
+//   GameMock.on('op'|'ptt'|'chapter', fn)
+(function () {
+  const W = 720, H = 1280;
+  const INK = '#10171f', PAPER = '#faf8ef', MINT = '#6fe2c7', MUTED = '#80919b', HEADER = '#0d131a',
+        RULE = '#2b3a44', CARD_INK = '#1c232b', AMBER = '#f0c06f', TALK_GREEN = '#60ec8c',
+        REASON_RED = '#ff5c5c', GOLD = '#ffd678';
+
+  const MAP_EN = [
+    '---------------', '|!!!.T.T.T.!!!|', '|.............|', '|.==========.b|', '|..h.h.h.h...t|',
+    '|&...........b|', '|.............|', '"..h.......h..|', '|.ht.......th.|', '|..h.......h..|',
+    '|.............|', '|A....,,,,...."', '|.....,,,,....|', '|.............|', '|#....&.&....J|', '-------+-------',
+  ];
+  const MAP_KO = [
+    '----p--WW--p-C-', '|PBB.....AA...|', '|LBB..........|', '|.............M', '|m............|',
+    '|.....rrrr....|', '|kc...rTTr....|', '|.....rrrr....|', '|b..........SS|', '|b..........t.|',
+    '|............g|', '|F............|', '|K............|', '|K............|', '|.......e.....|', '-------D-------',
+  ];
+  const LEGEND_EN = {
+    '-': ['-', '#4a5a66', 'wall', 'the wall'], '|': ['|', '#4a5a66', 'wall', 'the wall'],
+    '"': ['"', '#8ab8d8', 'window', 'the window'], '+': ['+', '#e5c17e', 'door', 'the door'],
+    '.': ['.', '#3a4149', 'floor', 'the floor'], ',': [',', '#6a5a4a', 'rug', 'the rug'],
+    '#': ['#', '#7a8ea0', 'pad', "Potts's charging pad"], '!': ['!', null, 'bottles', 'the bottle shelf'],
+    'T': ['T', '#d4a94f', 'taps', 'the beer taps'], '=': ['=', '#c8b078', 'counter', 'the bar counter'],
+    'h': ['h', '#c0a67c', 'stool', 'a stool'], 'b': ['b', '#b08c68', 'bench', 'the booth'],
+    't': ['t', '#b8a078', 'table', 'a table'], '&': ['&', '#6aaa78', 'plant', 'a potted plant'],
+    'J': ['J', '#ff60b0', 'jukebox', 'the jukebox'], 'A': ['A', '#5adcff', 'arcade', 'the arcade cabinet'],
+  };
+  const LEGEND_KO = {
+    '-': ['-', '#4a5a66', 'wall', '벽'], '|': ['|', '#4a5a66', 'wall', '벽'], '.': ['.', '#3a4149', 'floor', '바닥'],
+    'p': ['□', '#d6be8c', 'photo', '사진'], 'W': ['"', '#8ab8d8', 'window', '창문'], 'C': ['o', '#dedacc', 'clock', '벽시계'],
+    'P': ['o', '#e2e6f0', 'pillow', '베개'], 'B': ['=', '#b89c78', 'bed', '침대'], 'A': ['≡', '#b69c75', 'desk', '책상'],
+    'L': ['i', '#ffde96', 'lamp', '스탠드'], 'M': ['‖', '#aac8e8', 'mirror', '거울'], 'm': ['!', '#ec9242', 'medicine', '약'],
+    'r': [',', '#6a5a4a', 'rug', '러그'], 'T': ['t', '#b8a078', 'table', '탁자'], 'k': ['h', '#c0a67c', 'chair', '의자'],
+    'c': ['h', '#c0a67c', 'chair', '의자'], 'b': ['b', '#b08c68', 'sofa', '소파'], 'S': ['▣', '#e8c478', 'shelf', '선반'],
+    't': ['o', '#c0a67c', 'side_table', '협탁'], 'g': ['&', '#6aaa78', 'plant', '화분'], 'F': ['■', '#ccd2da', 'fridge', '냉장고'],
+    'K': ['=', '#a09080', 'kitchen', '싱크대'], 'e': ['∪', '#d2d4dc', 'shoes', '신발'], 'D': ['+', '#e5c17e', 'door', '현관문'],
+  };
+  const BOTTLES = ['#e0a040', '#4caf7d', '#d0506a', '#8ac7da', '#8c6ec8'];
+
+  const CAST_EN = {
+    player: { glyph: '@', color: MINT, cell: [7, 11], tag: 'YOU' },
+    Figgs:  { glyph: 'F', color: '#f0c06f', cell: [6, 2], tag: 'FIGGS' },
+    Nuaz:   { glyph: 'N', color: '#ff8ac8', cell: [13, 4], tag: 'NUAZ', seated: true },
+    Potts:  { glyph: 'P', color: '#9fc4e8', cell: [2, 13], tag: 'POTTS' },
+    Buzz:   { glyph: '*', color: '#c8e0ff', cell: [12, 3], tag: 'BUZZ', flying: true },
+    Yara:   { glyph: 'Y', color: '#c8a2ff', cell: [7, 15], tag: 'YARA', present: false },
+  };
+  const CAST_KO = {
+    player:   { glyph: '@', color: MINT, cell: [7, 11], tag: '나' },
+    '송 박사': { glyph: '송', color: '#f0c06f', cell: [4, 2], tag: '송 박사' },
+    '민수':   { glyph: '민', color: '#ff8ac8', cell: [11, 9], tag: '민수', seated: true },
+    '히리야 상': { glyph: '히', color: '#9fc4e8', cell: [2, 8], tag: '히리야 상', seated: true },
+  };
+
+  // A looping fake performance. kind: say | delta (an action line, shown in the feed with NO triangle glyph) |
+  // walk | enter (walk in through the door) | shake (a big moment: screen shake + sound word).
+  const SCRIPT_EN = [
+    { kind: 'say', who: 'Figgs', text: "Evening. You look like you walked here from the wrong side of the overpass.", seq: 101 },
+    { kind: 'delta', text: 'Nuaz glances up from her tablet, boots still on the table.', seq: 102 },
+    { kind: 'say', who: 'Nuaz', text: "Figgs, he's dripping on your floor.", seq: 103 },
+    { kind: 'walk', who: 'Potts', to: [11, 6], text: 'Potts rolls over from the corner.', seq: 104 },
+    { kind: 'say', who: 'Potts', text: 'Welcome. Our special tonight is whatever is left.', seq: 105 },
+    { kind: 'enter', who: 'Yara', to: [9, 9], text: 'The door opens. Yara comes in shaking rain off her coat.', seq: 106 },
+    { kind: 'say', who: 'Yara', text: "Nuaz. You said you'd call.", seq: 107 },
+    { kind: 'shake', who: 'Nuaz', word: 'WHAM!', text: 'Nuaz slams her boots down on the table.', seq: 108 },
+    { kind: 'say', who: 'Nuaz', text: "I said a lot of things.", seq: 109 },
+    { kind: 'delta', text: 'Figgs wipes a glass that was already clean.', seq: 110 },
+    { kind: 'say', who: 'Figgs', text: "What'll it be?", seq: 111 },
+    { kind: 'walk', who: 'Potts', to: [2, 13], text: 'Potts rolls back to its pad.', seq: 112 },
+    { kind: 'walk', who: 'Yara', to: [9, 7], text: 'Yara takes the stool by the booth.', seq: 113 },
+    { kind: 'say', who: 'Potts', text: 'Buzz, stop hovering over the man.', seq: 114 },
+    { kind: 'delta', text: 'Buzz drifts back to the booth.', seq: 115 },
+  ];
+  const SCRIPT_KO = [
+    { kind: 'say', who: '송 박사', text: '광수야. 정신이 좀 들어?', seq: 201 },
+    { kind: 'delta', text: '민수가 소파에서 벌떡 일어난다.', seq: 202 },
+    { kind: 'say', who: '민수', text: '야, 너 진짜 나 기억 안 나?', seq: 203 },
+    { kind: 'walk', who: '히리야 상', to: [6, 10], text: '히리야 상이 조심스럽게 다가온다.', seq: 204 },
+    { kind: 'say', who: '히리야 상', text: '광수 상... 괜찮습니까. 물, 마십니까?', seq: 205 },
+    { kind: 'shake', who: '민수', word: '쾅!', text: '민수가 탁자를 내리친다.', seq: 206 },
+    { kind: 'say', who: '민수', text: '야 너 진짜 기억 안 나냐고!', seq: 207 },
+    { kind: 'delta', text: '송 박사가 손전등으로 광수의 눈을 비춘다.', seq: 208 },
+    { kind: 'say', who: '송 박사', text: '동공은 정상이야. 일단 앉아.', seq: 209 },
+    { kind: 'walk', who: '히리야 상', to: [2, 8], text: '히리야 상이 다시 의자로 돌아간다.', seq: 210 },
+    { kind: 'say', who: '민수', text: '야, 너 진짜 나 기억 안 나?', seq: 211 },
+  ];
+
+  let lang = 'en';
+  let MAP = MAP_EN, LEGEND = LEGEND_EN, cast = JSON.parse(JSON.stringify(CAST_EN)), SCRIPT = SCRIPT_EN;
+  let canvas, ctx, raf = 0, frame = 0, t0 = performance.now();
+  const listeners = { op: [], ptt: [], chapter: [] };
+  let feed = [];              // [{text, kind, who, seq, t}]
+  let card = null;            // {who, text, seq, shown, revealed, until}
+  let scriptI = 0, nextOpAt = 1500, turn = 1;
+  let pttDown = false;
+  let outlines = [];          // [{kind,id,color,until,alpha,mode,dashed,label,question}]
+  let currentOp = null;
+  let shake = null, bigWord = null, chapterCard = null, liveBanner = null;
+  const marks = [];
+
+  // ---------- layout (mirrors mygame/app/layout.rb portrait branch, simplified) ----------
+  const L = {};
+  (function layout() {
+    L.header = { x: 0, y: 0, w: W, h: 64 };
+    L.mapTop = 64 + 92; L.cell = 42; L.cols = 15; L.rows = 16;
+    L.mapW = L.cols * L.cell; L.mapH = L.rows * L.cell;
+    L.mapX = Math.round((W - L.mapW) / 2); L.mapY = L.mapTop;
+    L.deckY = L.mapY + L.mapH + 8; L.deckH = H - L.deckY;
+    L.mic = { x: W / 2, y: L.deckY + L.deckH * 0.42, r: 80 };
+    L.pad = { x: 112, y: L.mic.y, r: 74 };
+    L.act = { x: W - 130, y: L.mic.y, r: 56 };
+    L.feed = { x: 24, y: L.mic.y + L.mic.r + 16, w: W - 48, h: H - (L.mic.y + L.mic.r + 16) - 6 };
+    L.gear = { x: W - 44, y: 32, r: 24 };
+    L.banner = { x: 24, y: 72, w: W - 48, h: 76 };
+  })();
+  const cellXY = (c, r) => [L.mapX + c * L.cell + L.cell / 2, L.mapY + r * L.cell + L.cell / 2];
+
+  // ---------- drawing helpers ----------
+  function font(px, bold) {
+    const fam = lang === 'ko' ? '"Noto Sans Mono CJK KR","Noto Sans CJK KR","Apple SD Gothic Neo","Noto Sans KR","Noto Serif CJK SC",ui-monospace,monospace'
+                              : '"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace';
+    return `${bold ? '600 ' : ''}${px}px ${fam}`;
+  }
+  function glyph(x, y, g, px, color, alpha = 1) {
+    ctx.save(); ctx.globalAlpha = alpha; ctx.fillStyle = color; ctx.font = font(px);
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(g, x, y); ctx.restore();
+  }
+  function label(x, y, s, px, color, alpha = 1, align = 'left', bold = false) {
+    ctx.save(); ctx.globalAlpha = alpha; ctx.fillStyle = color; ctx.font = font(px, bold);
+    ctx.textAlign = align; ctx.textBaseline = 'middle'; ctx.fillText(s, x, y); ctx.restore();
+  }
+  function rect(x, y, w, h, color, alpha = 1) {
+    ctx.save(); ctx.globalAlpha = alpha; ctx.fillStyle = color; ctx.fillRect(x, y, w, h); ctx.restore();
+  }
+  function rrect(x, y, w, h, r, fill, stroke, lw = 2, alpha = 1) {
+    ctx.save(); ctx.globalAlpha = alpha; ctx.beginPath();
+    ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+    if (fill) { ctx.fillStyle = fill; ctx.fill(); }
+    if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = lw; ctx.stroke(); }
+    ctx.restore();
+  }
+  function wrap(text, px, maxW) {
+    ctx.font = font(px);
+    const words = lang === 'ko' ? text.split('') : text.split(' ');
+    const sep = lang === 'ko' ? '' : ' ';
+    const lines = []; let cur = '';
+    for (const w of words) {
+      const t = cur ? cur + sep + w : w;
+      if (ctx.measureText(t).width > maxW && cur) { lines.push(cur); cur = w; } else cur = t;
+    }
+    if (cur) lines.push(cur);
+    return lines;
+  }
+
+  // ---------- the scene ----------
+  function drawHeader() {
+    rect(0, 0, W, 64, HEADER); rect(0, 64, W, 1, RULE);
+    label(24, 32, '● LIVE r212', 13, MINT, 0.9);
+    label(W / 2, 32, lang === 'ko' ? '광수의 집' : 'FIGGS & POTTS', 22, PAPER, 1, 'center', true);
+    label(W - 84, 32, '♪', 20, MUTED, 1, 'center');
+    label(L.gear.x, L.gear.y, '≡', 26, MUTED, 1, 'center');
+  }
+  function drawCells() {
+    for (let r = 0; r < L.rows; r++) for (let c = 0; c < L.cols; c++) {
+      const ch = MAP[r][c]; const e = LEGEND[ch]; if (!e) continue;
+      const [x, y] = cellXY(c, r);
+      let col = e[1]; if (ch === '!') col = BOTTLES[(c * 7 + r) % BOTTLES.length];
+      glyph(x, y, e[0], L.cell * 0.8, col);
+    }
+    if (lang === 'en') {
+      const [lx, ly] = cellXY(7, 3);
+      const g = ctx.createRadialGradient(lx, ly, 10, lx, ly, 260);
+      g.addColorStop(0, 'rgba(255,170,90,0.16)'); g.addColorStop(1, 'rgba(255,170,90,0)');
+      ctx.fillStyle = g; ctx.fillRect(L.mapX, L.mapY, L.mapW, L.mapH);
+      const [jx, jy] = cellXY(13, 14);
+      const g2 = ctx.createRadialGradient(jx, jy, 4, jx, jy, 90);
+      g2.addColorStop(0, 'rgba(255,70,160,0.22)'); g2.addColorStop(1, 'rgba(255,70,160,0)');
+      ctx.fillStyle = g2; ctx.fillRect(jx - 90, jy - 90, 180, 180);
+    } else {
+      const [lx, ly] = cellXY(1, 2);
+      const g = ctx.createRadialGradient(lx, ly, 6, lx, ly, 200);
+      g.addColorStop(0, 'rgba(255,222,150,0.14)'); g.addColorStop(1, 'rgba(255,222,150,0)');
+      ctx.fillStyle = g; ctx.fillRect(L.mapX, L.mapY, L.mapW, L.mapH);
+    }
+    for (const m of marks) { const [x, y] = cellXY(m.cell[0], m.cell[1]); glyph(x + 6, y + 8, m.glyph, L.cell * 0.5, m.color, 0.8); }
+  }
+  function actorPos(a) { return cellXY(...(a.pos || a.cell)); }
+  function visible(a) { return a.present !== false; }
+  function drawActors() {
+    const list = Object.entries(cast).filter(([, a]) => visible(a)).sort((a, b) => (a[1].pos || a[1].cell)[1] - (b[1].pos || b[1].cell)[1]);
+    for (const [name, a] of list) {
+      const [sx, sy] = actorPos(a); const c = L.cell;
+      const speaking = card && card.who === name && card.shown;
+      const bob = speaking ? Math.abs(Math.sin(frame / 2.2)) * 2.2 : 0;
+      const breathe = Math.sin(frame / 40 + name.length) * 0.8;
+      let gy = sy - bob - breathe + (a.seated ? c * 0.08 : 0), gx = sx;
+      if (a.flying) gy += Math.sin(frame / 13) * 4 - c * 0.28;
+      const size = c * 0.88 * (a.seated ? 0.92 : 1) * (a.flying ? 0.62 : 1);
+      if (!a.flying) { rect(sx - 8, sy + c * 0.40, 16, 3, '#030a11', 0.67); rect(sx - 8, sy + c * 0.43, 16, 2, a.color, 0.67); }
+      glyph(gx + 1, gy + 2, a.glyph, size, '#030a11');
+      glyph(gx, gy, a.glyph, size, a.color);
+      if (name === 'Potts') { rect(gx - 7, gy - 9, 14, 7, '#1a2a3a'); rect(gx - 5, gy - 7, 4 + (frame >> 4) % 6, 3, '#6fe2ff'); }
+      if (a.arrived && performance.now() - a.arrived < 2500) label(sx, sy - c * 0.75, a.tag, 15, a.color, 0.9, 'center');
+      if (name === 'player') {
+        if (pttDown) { const k = 0.5 + 0.5 * Math.sin(frame / 4); glyph(gx, gy - c * 0.75, '●', c * 0.36, TALK_GREEN, 0.5 + 0.5 * k); }
+        label(sx, sy + c * 0.72, a.tag, 15, MINT, 0.9, 'center');
+      }
+    }
+  }
+  function drawCard() {
+    if (!card || !card.shown) return;
+    const a = cast[card.who]; if (!a) return;
+    const [sx, sy] = actorPos(a);
+    const px = 19, maxW = 360, lines = wrap(card.text, px, maxW - 28);
+    const h = 16 + lines.length * 24 + 18;
+    ctx.font = font(px);
+    const w = Math.min(maxW, 28 + Math.max(...lines.map(l => ctx.measureText(l).width)));
+    let x = sx - w / 2, y = sy - L.cell * 0.9 - h;
+    x = Math.max(16, Math.min(W - w - 16, x));
+    if (y < 70) y = sy + L.cell * 0.9;
+    card.rect = { x, y, w, h };
+    rrect(x + 3, y + 4, w, h, 8, 'rgba(0,0,0,0.35)');
+    rrect(x, y, w, h, 8, PAPER);
+    ctx.save(); ctx.fillStyle = PAPER; ctx.beginPath();
+    const tx = Math.max(x + 16, Math.min(x + w - 16, sx));
+    if (y < sy) { ctx.moveTo(tx - 8, y + h); ctx.lineTo(tx + 8, y + h); ctx.lineTo(sx, sy - L.cell * 0.55); }
+    else { ctx.moveTo(tx - 8, y); ctx.lineTo(tx + 8, y); ctx.lineTo(sx, sy + L.cell * 0.55); }
+    ctx.fill(); ctx.restore();
+    ctx.font = font(13, true);
+    rrect(x + 10, y - 10, ctx.measureText(a.tag).width + 22, 20, 5, a.color);
+    label(x + 21, y, a.tag, 13, CARD_INK, 1, 'left', true);
+    // progressive reveal (the real game types cards; busy() is true while this runs)
+    let left = card.revealed;
+    lines.forEach((l, i) => { const s = l.slice(0, Math.max(0, left)); left -= l.length; label(x + 14, y + 28 + i * 24, s, px, CARD_INK); });
+  }
+  function drawDeck() {
+    rect(0, L.deckY, W, L.deckH, INK); rect(0, L.deckY - 1, W, 1, RULE);
+    ctx.save(); ctx.strokeStyle = RULE; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(L.pad.x, L.pad.y, L.pad.r, 0, 7); ctx.stroke(); ctx.restore();
+    glyph(L.pad.x, L.pad.y - 40, '▲', 18, MUTED); glyph(L.pad.x, L.pad.y + 40, '▼', 18, MUTED);
+    glyph(L.pad.x - 40, L.pad.y, '◀', 18, MUTED); glyph(L.pad.x + 40, L.pad.y, '▶', 18, MUTED);
+    const mc = pttDown ? TALK_GREEN : '#1f2a34';
+    ctx.save(); ctx.beginPath(); ctx.arc(L.mic.x, L.mic.y, L.mic.r, 0, 7); ctx.fillStyle = mc; ctx.fill();
+    ctx.strokeStyle = pttDown ? TALK_GREEN : RULE; ctx.lineWidth = 3; ctx.stroke(); ctx.restore();
+    if (pttDown) { const k = 0.5 + 0.5 * Math.sin(frame / 5); ctx.save(); ctx.globalAlpha = 0.25 * k; ctx.strokeStyle = TALK_GREEN; ctx.lineWidth = 6; ctx.beginPath(); ctx.arc(L.mic.x, L.mic.y, L.mic.r + 10 + 6 * k, 0, 7); ctx.stroke(); ctx.restore(); }
+    label(L.mic.x, L.mic.y - 6, pttDown ? (lang === 'ko' ? '듣는 중' : 'HEARD') : (lang === 'ko' ? '말하기' : 'TALK'), 20, pttDown ? CARD_INK : PAPER, 1, 'center', true);
+    label(L.mic.x, L.mic.y + 22, lang === 'ko' ? '꾹 누르기' : 'hold', 13, pttDown ? CARD_INK : MUTED, 1, 'center');
+    ctx.save(); ctx.beginPath(); ctx.arc(L.act.x, L.act.y, L.act.r, 0, 7); ctx.strokeStyle = AMBER; ctx.lineWidth = 3; ctx.stroke(); ctx.restore();
+    label(L.act.x, L.act.y, lang === 'ko' ? '행동' : 'ACT', 18, AMBER, 1, 'center', true);
+  }
+  function drawFeed() {
+    const f = L.feed; const lines = feed.slice(-6);
+    let y = f.y + 14;
+    for (const l of lines) {
+      const age = (performance.now() - l.t) / 1000;
+      const a = Math.max(0.35, 1 - age / 40);
+      let col = MUTED, text = l.text;
+      if (l.kind === 'say') { col = PAPER; text = `${(l.who || '').toUpperCase()}: ${l.text}`; }
+      if (l.kind === 'delta' || l.kind === 'walk' || l.kind === 'enter' || l.kind === 'shake') col = '#9aa8b2';
+      if (l.kind === 'ptt') { col = MINT; text = `${lang === 'ko' ? '나' : 'YOU'}: ${l.text}`; }
+      if (l.kind === 'reason') col = REASON_RED;
+      if (l.kind === 'flair' || l.kind === 'chapter') col = GOLD;
+      const ws = wrap(text, 15, f.w);
+      l.rect = { x: f.x, y: y - 10, w: f.w, h: ws.length * 20 };
+      for (const wl of ws) { label(f.x, y, wl, 15, col, a); y += 20; }
+      y += 4;
+      if (y > H - 10) break;
+    }
+  }
+  function drawBig() {
+    const now = performance.now();
+    if (bigWord && now < bigWord.until) {
+      const k = (now - bigWord.at) / (bigWord.until - bigWord.at);
+      const [x, y] = actorPos(cast[bigWord.who] || cast.player);
+      label(x, y - L.cell * 1.6 - k * 20, bigWord.word, 54 * (1 + 0.3 * (1 - k)), '#ffe250', 1 - k * k, 'center', true);
+    } else bigWord = null;
+    if (chapterCard && now < chapterCard.until) {
+      const k = Math.min(1, (now - chapterCard.at) / 300);
+      rect(L.mapX, L.mapY, L.mapW, L.mapH, INK, 0.86 * k);
+      label(W / 2, L.mapY + L.mapH * 0.42, chapterCard.title, 20, PAPER, k, 'center', true);
+      label(W / 2, L.mapY + L.mapH * 0.42 + 34, chapterCard.sub, 15, MUTED, k, 'center');
+    } else chapterCard = null;
+    if (liveBanner && now < liveBanner.until) {
+      const age = now - liveBanner.at, life = liveBanner.until - liveBanner.at;
+      const slide = Math.min(1, age / 230); const fade = age > life - 400 ? (life - age) / 400 : 1;
+      const b = L.banner, yy = b.y - 8 + 8 * (1 - Math.pow(1 - slide, 3));
+      rect(b.x, yy, b.w, b.h, '#152029', 0.94 * fade);
+      ctx.save(); ctx.globalAlpha = fade; ctx.strokeStyle = MINT; ctx.lineWidth = 1; ctx.strokeRect(b.x + 0.5, yy + 0.5, b.w - 1, b.h - 1); ctx.restore();
+      label(b.x + 16, yy + 22, liveBanner.title, 20, MINT, fade, 'left', true);
+      label(b.x + b.w - 16, yy + 22, liveBanner.rev, 14, MUTED, fade, 'right');
+      label(b.x + 16, yy + 52, liveBanner.body, 16, PAPER, fade);
+      if (liveBanner.by) label(b.x + b.w - 16, yy + 52, '· ' + liveBanner.by, 14, GOLD, fade, 'right');
+    } else liveBanner = null;
+  }
+  function drawOutlines() {
+    const now = performance.now();
+    outlines = outlines.filter(o => !o.until || o.until > now);
+    for (const o of outlines) {
+      const r = rectFor(o.kind, o.id); if (!r) continue;
+      const pad = 6; let a = o.alpha == null ? 1 : o.alpha; if (o.fade) a *= Math.min(1, (now - o.born) / o.fade);
+      const x0 = r.x - pad, y0 = r.y - pad, x1 = r.x + r.w + pad, y1 = r.y + r.h + pad;
+      const t = Math.max(12, Math.min(r.w, r.h) * 0.28);
+      ctx.save(); ctx.globalAlpha = a;
+      // ink under, then hazard-yellow L-brackets (the Act-target idiom in another colour)
+      for (const pass of [0, 1]) {
+        ctx.strokeStyle = pass ? o.color : '#06080c'; ctx.lineWidth = pass ? 2.5 : 5; ctx.lineCap = 'square';
+        ctx.beginPath();
+        ctx.moveTo(x0, y0 + t); ctx.lineTo(x0, y0); ctx.lineTo(x0 + t, y0);
+        ctx.moveTo(x1 - t, y0); ctx.lineTo(x1, y0); ctx.lineTo(x1, y0 + t);
+        ctx.moveTo(x1, y1 - t); ctx.lineTo(x1, y1); ctx.lineTo(x1 - t, y1);
+        ctx.moveTo(x0 + t, y1); ctx.lineTo(x0, y1); ctx.lineTo(x0, y1 - t); ctx.stroke();
+      }
+      if (o.mode === 'lock' || o.dashed) {
+        ctx.strokeStyle = o.color; ctx.lineWidth = 1; ctx.setLineDash(o.dashed ? [3, 5] : [4, 6]);
+        ctx.strokeRect(x0 + 0.5, y0 + 0.5, x1 - x0 - 1, y1 - y0 - 1); ctx.setLineDash([]);
+      }
+      if (o.question) { ctx.font = font(14, true); ctx.fillStyle = o.color; ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillText('?', x1 + 6, y0 + 8); }
+      if (o.label) {
+        ctx.font = font(12, true); const lw = ctx.measureText(o.label).width + 16;
+        let lx = x0 - 1, ly = y0 - 26; if (ly < 70) ly = y1 + 6;
+        lx = Math.max(8, Math.min(W - lw - 8, lx));
+        rect(lx, ly, lw, 20, '#152029'); ctx.strokeStyle = o.color; ctx.lineWidth = 1; ctx.strokeRect(lx + 0.5, ly + 0.5, lw - 1, 19);
+        label(lx + 8, ly + 10, o.label, 12, o.color, 1, 'left', true);
+      }
+      ctx.restore();
+    }
+  }
+
+  // ---------- performance (the fake director) ----------
+  function startOp(op) {
+    currentOp = Object.assign({ started: performance.now() }, op);
+    const now = performance.now();
+    if (op.kind === 'say') {
+      card = { who: op.who, text: op.text, seq: op.seq, shown: true, revealed: 0, until: now + 1400 + op.text.length * 60 };
+      feed.push({ kind: 'say', who: op.who, text: op.text, seq: op.seq, t: now });
+      nextOpAt = card.until + 600;
+    } else if (op.kind === 'delta') {
+      feed.push({ kind: 'delta', text: op.text, seq: op.seq, t: now }); nextOpAt = now + 1800;
+    } else if (op.kind === 'walk' || op.kind === 'enter') {
+      const a = cast[op.who]; a.present = true; if (op.kind === 'enter') { a.arrived = now; a.cell = lang === 'ko' ? [7, 15] : [7, 15]; }
+      a.from = (a.pos || a.cell).slice(); a.to = op.to; a.walkT0 = now;
+      feed.push({ kind: op.kind, text: op.text, seq: op.seq, t: now }); nextOpAt = now + 1700;
+    } else if (op.kind === 'shake') {
+      shake = { at: now, until: now + 420 }; bigWord = { who: op.who, word: op.word, at: now, until: now + 900 };
+      feed.push({ kind: 'shake', text: op.text, seq: op.seq, t: now }); nextOpAt = now + 1500;
+    }
+    if (op.kind === 'say' && (op.seq % 3 === 0)) turn++;
+    listeners.op.forEach(fn => fn(moment()));
+  }
+  function tickScript(now) {
+    if (card && card.shown) { card.revealed = Math.min(card.text.length, card.revealed + 1.1); if (now > card.until) card.shown = false; }
+    for (const a of Object.values(cast)) if (a.to) {
+      const k = Math.min(1, (now - a.walkT0) / 1400);
+      a.pos = [a.from[0] + (a.to[0] - a.from[0]) * k, a.from[1] + (a.to[1] - a.from[1]) * k];
+      if (k >= 1) { a.cell = a.to.slice(); a.pos = null; a.to = null; }
+    }
+    if (!pttDown && !chapterCard && now > nextOpAt) { startOp(SCRIPT[scriptI % SCRIPT.length]); scriptI++; }
+  }
+
+  // ---------- public surface ----------
+  function rectFor(kind, id) {
+    const c = L.cell;
+    if (kind === 'actor') { const a = cast[id]; if (!a || !visible(a)) return null; const [x, y] = actorPos(a); return { x: x - c * 0.5, y: y - c * 0.6, w: c, h: c * 1.1 }; }
+    if (kind === 'prop') {
+      let x0 = 1e9, y0 = 1e9, x1 = -1, y1 = -1;
+      for (let r = 0; r < L.rows; r++) for (let cc = 0; cc < L.cols; cc++) { const e = LEGEND[MAP[r][cc]]; if (e && e[2] === id) { x0 = Math.min(x0, cc); y0 = Math.min(y0, r); x1 = Math.max(x1, cc); y1 = Math.max(y1, r); } }
+      if (x1 < 0) return null; return { x: L.mapX + x0 * c, y: L.mapY + y0 * c, w: (x1 - x0 + 1) * c, h: (y1 - y0 + 1) * c };
+    }
+    if (kind === 'cell') { const [cc, r] = String(id).split(',').map(Number); return { x: L.mapX + cc * c, y: L.mapY + r * c, w: c, h: c }; }
+    if (kind === 'card') { if (card && card.shown && (id == null || card.seq == id) && card.rect) return card.rect; return null; }
+    if (kind === 'feed') { const l = feed.find(f => f.seq == id); return l && l.rect ? l.rect : null; }
+    if (kind === 'beat') { const l = feed.find(f => f.seq == id); if (l && l.rect) return l.rect; const a = currentOp && cast[currentOp.who]; return a ? rectFor('actor', currentOp.who) : null; }
+    if (kind === 'ui') {
+      if (id === 'mic') return { x: L.mic.x - L.mic.r, y: L.mic.y - L.mic.r, w: L.mic.r * 2, h: L.mic.r * 2 };
+      if (id === 'act') return { x: L.act.x - L.act.r, y: L.act.y - L.act.r, w: L.act.r * 2, h: L.act.r * 2 };
+      if (id === 'pad') return { x: L.pad.x - L.pad.r, y: L.pad.y - L.pad.r, w: L.pad.r * 2, h: L.pad.r * 2 };
+      if (id === 'feed') return L.feed;
+      if (id === 'header') return L.header;
+      if (id === 'map') return { x: L.mapX, y: L.mapY, w: L.mapW, h: L.mapH };
+      if (id === 'deck') return { x: 0, y: L.deckY, w: W, h: L.deckH };
+    }
+    if (kind === 'screen' || kind === 'whole' || kind === 'moment') return { x: L.mapX, y: L.mapY, w: L.mapW, h: L.mapH };
+    return null;
+  }
+  function inventory() {
+    const out = [];
+    for (const [name, a] of Object.entries(cast)) if (visible(a)) out.push({ kind: 'actor', id: name, label: name === 'player' ? a.tag : name, rect: rectFor('actor', name) });
+    const seen = new Set();
+    for (const row of MAP) for (const ch of row) { const e = LEGEND[ch]; if (e && !seen.has(e[2]) && !['floor', 'wall', 'rug'].includes(e[2])) { seen.add(e[2]); out.push({ kind: 'prop', id: e[2], label: e[3], rect: rectFor('prop', e[2]) }); } }
+    if (card && card.shown && card.rect) out.push({ kind: 'card', id: card.seq, label: `${card.who}: "${card.text.slice(0, 30)}…"`, rect: card.rect });
+    for (const l of feed.slice(-6)) out.push({ kind: 'feed', id: l.seq, label: l.text.slice(0, 40), rect: l.rect });
+    for (const id of ['mic', 'act', 'pad', 'feed', 'header']) out.push({ kind: 'ui', id, label: id, rect: rectFor('ui', id) });
+    return out;
+  }
+  function moment() {
+    return {
+      t: Math.round(performance.now() - t0), turn, seq: currentOp ? currentOp.seq : null,
+      op: currentOp ? { kind: currentOp.kind, who: currentOp.who || null, text: currentOp.text, to: currentOp.to || null, from: currentOp.who && cast[currentOp.who] ? (cast[currentOp.who].from || null) : null } : null,
+      scene: lang === 'ko' ? 'gwangsu' : 'bar', lang,
+      actors: Object.fromEntries(Object.entries(cast).filter(([, a]) => visible(a)).map(([n, a]) => [n, { cell: (a.pos || a.cell).map(Math.round), speaking: !!(card && card.shown && card.who === n) }])),
+      player_mode: pttDown ? 'ptt' : 'walk', recent: feed.slice(-6).map(f => ({ seq: f.seq, kind: f.kind, who: f.who || null, text: f.text })),
+      card: card && card.shown ? { who: card.who, seq: card.seq, revealed: Math.round(card.revealed), total: card.text.length } : null,
+      menu_open: false,
+    };
+  }
+  function outline(kind, id, opts) {
+    if (kind == null) { outlines = []; return; }
+    opts = opts || {};
+    outlines = outlines.filter(o => !(o.kind === kind && o.id === id) && !(opts.mode === 'lock' && o.mode === 'lock'));
+    outlines.push({ kind, id, color: opts.color || '#FFD400', until: opts.ttl ? performance.now() + opts.ttl : null, born: performance.now(), fade: opts.fade || 0,
+                    alpha: opts.alpha, mode: opts.mode || 'glance', dashed: !!opts.dashed, label: opts.label || null, question: !!opts.question });
+  }
+  function clearLock() { outlines = outlines.filter(o => o.mode !== 'lock'); }
+  function snapshot(r) {
+    r = r || { x: 0, y: 0, w: W, h: H };
+    const s = canvas.width / W;
+    const x = Math.max(0, r.x), y = Math.max(0, r.y), w = Math.min(W - x, r.w), h = Math.min(H - y, r.h);
+    const c2 = document.createElement('canvas'); c2.width = Math.max(1, Math.round(w * s)); c2.height = Math.max(1, Math.round(h * s));
+    c2.getContext('2d').drawImage(canvas, x * s, y * s, w * s, h * s, 0, 0, c2.width, c2.height);
+    return c2.toDataURL('image/png');
+  }
+  function busy() { return !!(card && card.shown && card.revealed < card.text.length) || !!shake || !!chapterCard; }
+  function ptt(down) {
+    if (pttDown === down) return; pttDown = down;
+    if (!down) { feed.push({ kind: 'ptt', text: lang === 'ko' ? '(말한 내용은 대본으로 들어간다)' : '(what you said went into the screenplay)', seq: 900 + (frame % 1000), t: performance.now() }); nextOpAt = performance.now() + 900; }
+    listeners.ptt.forEach(fn => fn(down));
+  }
+  function chapter() {
+    const now = performance.now();
+    chapterCard = lang === 'ko'
+      ? { title: '2. 광수의 집 앞 골목  밤  EXT.', sub: '광수가 현관문을 열고 밖으로 나선다.', at: now, until: now + 2600 }
+      : { title: '2. THE STREET OUTSIDE FIGGS & POTTS  NIGHT  EXT.', sub: 'The adventurer steps out into the rain.', at: now, until: now + 2600 };
+    feed.push({ kind: 'chapter', text: chapterCard.sub, seq: 950, t: now });
+    nextOpAt = now + 3200;
+    listeners.chapter.forEach(fn => fn());
+  }
+  function banner(title, body, by, rev) {
+    const now = performance.now();
+    liveBanner = { title, body, by: by || null, rev: rev || 'r213', at: now, until: now + 4800 };
+  }
+  function setLang(l) {
+    lang = l; MAP = l === 'ko' ? MAP_KO : MAP_EN; LEGEND = l === 'ko' ? LEGEND_KO : LEGEND_EN;
+    cast = JSON.parse(JSON.stringify(l === 'ko' ? CAST_KO : CAST_EN)); SCRIPT = l === 'ko' ? SCRIPT_KO : SCRIPT_EN;
+    feed = []; card = null; scriptI = 0; turn = 1; nextOpAt = performance.now() + 1200; outlines = []; currentOp = null; bigWord = null; chapterCard = null; liveBanner = null;
+    marks.length = 0; if (l === 'en') marks.push({ cell: [5, 2], glyph: '~', color: '#8a2a2a' });
+  }
+  function fit() {
+    const r = canvas.getBoundingClientRect(); const dpr = Math.min(window.devicePixelRatio || 1, 3);
+    const cw = Math.round(r.width * dpr), ch = Math.round(r.height * dpr);
+    if (canvas.width !== cw || canvas.height !== ch) { canvas.width = cw; canvas.height = ch; }
+  }
+  function draw() {
+    frame++;
+    const now = performance.now();
+    fit();
+    tickScript(now);
+    const s = canvas.width / W;
+    let dx = 0, dy = 0;
+    if (shake) { if (now > shake.until) shake = null; else { const k = 1 - (now - shake.at) / (shake.until - shake.at); dx = (Math.random() - 0.5) * 14 * k; dy = (Math.random() - 0.5) * 10 * k; } }
+    ctx.setTransform(s, 0, 0, s, dx * s, dy * s);
+    rect(-20, -20, W + 40, H + 40, INK);
+    drawHeader(); drawCells(); drawActors(); drawCard(); drawDeck(); drawFeed(); drawBig(); drawOutlines();
+    raf = requestAnimationFrame(draw);
+  }
+  function mount(cv) {
+    canvas = cv; ctx = cv.getContext('2d'); fit(); window.addEventListener('resize', fit);
+    marks.push({ cell: [5, 2], glyph: '~', color: '#8a2a2a' });
+    cancelAnimationFrame(raf); draw();
+  }
+  function hit(px, py) {
+    const inv = inventory();
+    const order = { actor: 0, card: 1, ui: 2, feed: 3, prop: 4 };
+    const hits = inv.filter(i => i.rect && px >= i.rect.x && px <= i.rect.x + i.rect.w && py >= i.rect.y && py <= i.rect.y + i.rect.h);
+    hits.sort((a, b) => order[a.kind] - order[b.kind]);
+    return hits[0] || null;
+  }
+  window.GameMock = { mount, inventory, rectFor, outline, clearLock, moment, snapshot, busy, ptt, chapter, banner, setLang, hit,
+                      on: (e, fn) => listeners[e].push(fn), W, H, layout: L, get lang() { return lang; }, get ptt_down() { return pttDown; },
+                      castNames: () => Object.keys(cast).filter(n => visible(cast[n])) };
+})();
+</script>
+<script>
+(function () {
+  'use strict';
+  const $ = (s) => document.querySelector(s);
+  const body = document.body, canvas = $('#game'), panel = $('#panel'), list = $('#list'), pin = $('#pin'), ticker = $('#ticker'), booth = $('#booth');
+  const YELLOW = '#FFD400';
+  const KIND_GLYPH = { broke: '!', feel: '~', want: '+', keep: '=', why: '?' };
+  const COLS = 34;
+
+  // ------------------------------------------------------------------ layout
+  let mode = 'ipad';
+  function layout() {
+    const vw = window.innerWidth, vh = window.innerHeight;
+    mode = (vw > vh && vw >= 900) ? 'ipad' : 'iphone';
+    body.classList.toggle('ipad', mode === 'ipad'); body.classList.toggle('iphone', mode === 'iphone');
+    let gw, gh, gx, gy;
+    if (mode === 'ipad') {
+      gh = vh; gw = Math.round(gh * 390 / 844);            // the iPhone's own aspect, flush left against the bezel
+      gx = 0; gy = 0;
+      booth.style.left = (gw + 1) + 'px'; booth.style.width = Math.max(160, vw - gw - 300 - 2) + 'px';
+    } else {
+      gw = Math.min(vw, Math.round(vh * 390 / 844)); gh = Math.round(gw * 844 / 390);
+      if (gh > vh) { gh = vh; gw = Math.round(gh * 390 / 844); }
+      gx = Math.round((vw - gw) / 2); gy = Math.round((vh - gh) / 2);
+      booth.style.left = ''; booth.style.width = '';
+    }
+    Object.assign(canvas.style, { left: gx + 'px', top: gy + 'px', width: gw + 'px', height: gh + 'px' });
+    // iPhone: the sheet rises exactly to the map's bottom edge, never higher
+    if (mode === 'iphone') {
+      const s = gw / GameMock.W, mapBottom = gy + (GameMock.layout.mapY + GameMock.layout.mapH) * s;
+      panel.style.height = Math.max(120, vh - mapBottom) + 'px';
+    } else panel.style.height = '';
+    parkPin();
+  }
+  const cssRect = (r) => { const cr = canvas.getBoundingClientRect(), s = cr.width / GameMock.W; return { x: cr.left + r.x * s, y: cr.top + r.y * s, w: r.w * s, h: r.h * s }; };
+  const toLogical = (cx, cy) => { const cr = canvas.getBoundingClientRect(), s = cr.width / GameMock.W; return [(cx - cr.left) / s, (cy - cr.top) / s]; };
+
+  // ------------------------------------------------------------------ Pin (DOM body; outlines in the game are the mock's)
+  let pinState = 'listening', pinAway = false, muted = false, quiet = true; // v1 default: outline only on tap
+  function parkPin() {
+    if (pinAway) return;
+    let x, y;
+    if (mode === 'ipad') {
+      const pr = panel.getBoundingClientRect();
+      const last = list.querySelector('.row:last-child');
+      y = last ? last.getBoundingClientRect().top + 3 : pr.bottom - 60;
+      x = pr.left - 9;
+    } else {
+      const tr = ticker.getBoundingClientRect();
+      x = tr.left + 8; y = tr.top + 13;
+    }
+    pin.style.left = x + 'px'; pin.style.top = y + 'px';
+  }
+  function setPin(st) { pinState = st; pin.className = st + (muted ? ' muted' : '') + (pinAway ? ' away' : ''); }
+  function pinTravelTo(r, then) {
+    // hop the DOM brackets to the css centre of a logical rect, then hand off to the in-game outline
+    const c = cssRect(r); pin.style.left = (c.x + c.w / 2 - 9) + 'px'; pin.style.top = (c.y + c.h / 2 - 9) + 'px';
+    setTimeout(then, 95);
+  }
+  function pinReturn() { pinAway = false; pin.classList.remove('away'); parkPin(); setPin(GameMock.ptt_down ? 'folded' : 'listening'); }
+
+  // ------------------------------------------------------------------ items
+  const items = []; let nextId = 1, selected = null, bound = null, boundUntil = 0;
+  const sessionT0 = performance.now();
+  const clock = () => { const s = Math.floor((performance.now() - sessionT0) / 1000); return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`; };
+  const eaw = (ch) => { const c = ch.codePointAt(0); return (c >= 0xAC00 && c <= 0xD7A3) || (c >= 0x1100 && c <= 0x11FF) || (c >= 0x3130 && c <= 0x318F) || (c >= 0x4E00 && c <= 0x9FFF) || (c >= 0x3000 && c <= 0x303F) || (c >= 0xFF00 && c <= 0xFF60) ? 2 : 1; };
+  function clip(text, cols) { let w = 0, out = ''; for (const ch of text) { const cw = eaw(ch); if (w + cw > cols - 1) return out.replace(/\s+$/, '') + '…'; out += ch; w += cw; } return out; }
+  const L = () => GameMock.lang;
+
+  // visible-change budget: one change per 2.5 s, held during stage peaks (max 3 s) and during PTT
+  const q = []; let lastChange = 0, holdSince = 0;
+  function enqueue(fn, urgent) { if (urgent) q.unshift(fn); else q.push(fn); }
+  setInterval(() => {
+    if (!q.length) return;
+    const now = performance.now();
+    if (GameMock.ptt_down) return;
+    if (now - lastChange < 2500) return;
+    if (GameMock.busy()) { if (!holdSince) holdSince = now; if (now - holdSince < 3000) return; }
+    holdSince = 0; lastChange = now; q.shift()();
+  }, 80);
+
+  function churnInto(el, text) {
+    // the join-banner letter churn: left to right, ~16 ms per glyph
+    const pool = L() === 'ko' ? '가나다라마바사아자차카타파하' : 'abcdefghijklmnopqrstuvwxyz';
+    const chars = [...text]; let i = 0;
+    const tick = () => { i++; el.textContent = chars.slice(0, i).join('') + (i < chars.length ? pool[(Math.random() * pool.length) | 0] : ''); if (i < chars.length) setTimeout(tick, 16); else el.textContent = text; };
+    tick();
+  }
+
+  function rowEl(it) {
+    let el = list.querySelector(`[data-id="${it.id}"]`);
+    if (!el) {
+      el = document.createElement('div'); el.className = 'row'; el.dataset.id = it.id;
+      el.innerHTML = '<span class="gut"></span><span class="txt"></span><span class="st"></span><div class="hold"></div>';
+      list.appendChild(el); bindRow(el, it);
+    }
+    return el;
+  }
+  function render(it, opts = {}) {
+    const el = rowEl(it);
+    el.className = 'row' + (it.state === 'forming' ? ' forming' : '') + (it.ghost ? ' ghost' : '') + (it.state === 'merged' ? ' residue' : '') + (it.state === 'dismissed' ? ' dismissed' : '') + ` k-${it.kind}` + (selected === it ? ' sel' : '') + ` st-${it.state}`;
+    el.querySelector('.gut').textContent = it.state === 'merged' ? '··' : KIND_GLYPH[it.kind] || '·';
+    const txt = el.querySelector('.txt');
+    const text = it.state === 'merged' ? (L() === 'ko' ? '합쳐짐 ↑' : 'merged ↑') : clip(it.restated + (it.unsure ? '?' : ''), COLS);
+    if (opts.churn) churnInto(txt, text); else txt.textContent = text;
+    const st = el.querySelector('.st');
+    let s = '';
+    if (it.weight > 1) s += `<span class="sup">${['', '', '²', '³', '⁴', '⁵'][it.weight] || it.weight}</span>`;
+    if (it.corrected) s += ' ✎'; if (it.proposal) s += ' *';
+    const stg = { started: '▸' + '·'.repeat(Math.min(3, it.step || 0)), testing: '▸ tests', landing: '↓', live: '●', kept: '✓', reverted: '↺', rolled: '✕', needsjosh: '▸ ⚑' }[it.state];
+    if (stg) s += ' ' + stg;
+    st.innerHTML = s.trim();
+    // extra lines
+    el.querySelectorAll('.strike,.ans,.got,.open').forEach(n => n.remove());
+    if (it.strike && performance.now() < it.strike.until) { const d = document.createElement('div'); d.className = 'strike'; d.textContent = clip(it.strike.text, COLS); el.appendChild(d); setTimeout(() => render(it), it.strike.until - performance.now() + 20); }
+    if (it.answer) { const d = document.createElement('div'); d.className = 'ans'; d.textContent = it.answer; el.appendChild(d); }
+    if (it.got && performance.now() < it.got.until) { const d = document.createElement('div'); d.className = 'got'; d.textContent = it.got.text; el.appendChild(d); setTimeout(() => render(it), it.got.until - performance.now() + 20); }
+    if (selected === it) el.appendChild(openView(it));
+    el.querySelector('.hold').style.transform = 'scaleX(0)';
+    list.scrollTop = list.scrollHeight;
+    footer(); tickerLine(); parkPin();
+  }
+  function openView(it) {
+    const d = document.createElement('div'); d.className = 'open';
+    const kv = (k, v, cls = '') => { const a = document.createElement('div'); a.className = 'k'; a.textContent = k; const b = document.createElement('div'); b.className = 'v ' + cls; b.innerHTML = v; d.append(a, b); };
+    kv(L() === 'ko' ? '들림' : 'heard', it.said.map((s, i) => `“${s}”${i === 0 ? ` <span class="conf num">.${Math.round(it.p * 100)}</span>` : ''}`).join('<br>'), 'q');
+    kv('about', `${it.about.kind}:${it.about.id}` + (it.aboutWas ? ` <span class="was">(was ${it.aboutWas})</span>` : '') + (it.about.p < 0.6 ? ` <span class="was">· alt ${it.about.alts.map(a => `${a.id} .${Math.round(a.p * 100)}`).join(', ')}</span>` : ''));
+    const m = it.moment; kv('moment', `t${m.turn} ${m.clock} · ${m.seq ? `op ${m.seq} ${m.op.kind}${m.op.who ? ' ' + m.op.who.toLowerCase() : ''}${m.op.from && m.op.to ? ` (${m.op.from.map(Math.round)})→(${m.op.to})` : ''}` : 'no op'} · <span class="num">−${m.lead.toFixed(1)}s</span>`);
+    if (it.koma) { const k = document.createElement('div'); k.className = 'koma'; k.innerHTML = `<img src="${it.koma}" style="height:${Math.round(132 * (it.komaRatio || 1))}px"><div class="cap">${L() === 'ko' ? '순간 (코마)' : 'the moment (koma)'}<br>${it.about.label || ''}<br>rev r212</div>`; d.appendChild(k); }
+    if (it.kind === 'why') kv(L() === 'ko' ? '답' : 'answer', it.answer || (L() === 'ko' ? '찾는 중…' : 'looking it up…'));
+    else if (it.kind !== 'keep') kv('plan', (it.plan || (L() === 'ko' ? '정리 중…' : 'drafting…')) + ` <span class="tier ${it.tier === 'needs-josh' ? 'nj' : 'auto'}">· ${it.tier === 'needs-josh' ? '⚑ needs-josh' : 'auto'}</span>`);
+    else if (it.kind === 'keep') kv('plan', L() === 'ko' ? `이대로: op ${m.seq || '-'} 순간을 회귀 가드로 고정` : `keep: pin op ${m.seq || '-'} as a regression guard`);
+    if (it.state === 'started' || it.state === 'testing' || it.state === 'landing') kv('bench', `<span class="steps">${it.steps.slice(0, it.step).join(' · ') || '…'}</span>`);
+    if (it.state === 'live') kv('trial', L() === 'ko' ? '들어옴 · 맞으면 말해줘' : 'landed · say if it is right');
+    if (it.state === 'needsjosh') kv('held', L() === 'ko' ? '모델이 보는 텍스트 → 초안만, 네가 yes 해야 함' : 'model-facing text → draft only, waits for your yes');
+    const h = document.createElement('div'); h.className = 'hint'; h.textContent = L() === 'ko' ? '꾹 누르면 시작 · 말하면 고침 · ← 지우기' : 'hold to start · speak to correct · ← dismiss'; d.appendChild(h);
+    return d;
+  }
+  function footer() {
+    const live = items.filter(i => !['merged', 'dismissed'].includes(i.state) && !i.ghost);
+    const started = items.filter(i => ['started', 'testing', 'landing'].includes(i.state)).length, onair = items.filter(i => ['live', 'kept'].includes(i.state)).length;
+    $('#fCounts').textContent = L() === 'ko' ? `${live.length}개 · ${started} 진행 · ${onair} 반영` : `${live.length} items · ${started} started · ${onair} live`;
+    $('#fState').textContent = (muted ? (L() === 'ko' ? '음소거' : 'muted') : GameMock.ptt_down ? (L() === 'ko' ? '장면 안' : 'in scene') : (L() === 'ko' ? '듣는 중' : 'listening')) + (quiet ? '' : (L() === 'ko' ? ' · 글랜스 켜짐 (v1 기본: quiet)' : ' · glance on (v1 default: quiet)'));
+    $('#hMic').textContent = muted ? '○' : GameMock.ptt_down ? '‖' : '●'; $('#hMic').classList.toggle('off', muted);
+    $('#hTurn').textContent = 't' + GameMock.moment().turn;
+  }
+  function tickerLine() {
+    const live = items.filter(i => !['merged', 'dismissed'].includes(i.state) && !i.ghost);
+    const last = [...live].reverse().find(i => i.state !== 'forming') || live[live.length - 1];
+    $('#tGut').textContent = last ? KIND_GLYPH[last.kind] : '';
+    $('#tTxt').textContent = last ? clip(last.restated, 30) : (L() === 'ko' ? 'HALF · 듣는 중' : 'HALF · listening');
+    $('#tN').textContent = live.length ? `[${live.length}]` : '';
+  }
+  setInterval(() => { $('#hClock').textContent = clock(); }, 500);
+
+  // ------------------------------------------------------------------ the fake pipeline
+  function captureMoment() {
+    const m = GameMock.moment();
+    return { turn: m.turn, clock: clock(), seq: m.seq, op: m.op || { kind: '-', who: null }, lead: 0.6 + Math.random() * 1.2, actors: m.actors };
+  }
+  let lastKomaRatio = 1;
+  function komaFor(about) {
+    const r = GameMock.rectFor(about.kind, about.id); if (!r) return null;
+    const c = GameMock.layout.cell; const rr = about.kind === 'actor' || about.kind === 'prop' ? { x: r.x - c, y: r.y - c, w: r.w + 2 * c, h: r.h + 2 * c } : r;
+    try { const d = GameMock.snapshot(rr); lastKomaRatio = rr.h / rr.w; return d; } catch (e) { return null; }
+  }
+  // speak(): the player said something on the open mic. `u` is a canned utterance object (see CANNED) or free text.
+  function speak(u) {
+    if (muted) return;
+    const text = typeof u === 'string' ? u : u.say;
+    const m = captureMoment();                        // the moment is taken at speech onset − lead (reaction lag)
+    // (a) the ░ placeholder grows while speaking: no words are ever shown
+    const ph = { id: 'p' + nextId++, kind: 'feel', restated: '░', state: 'forming', said: [], weight: 1, about: { kind: 'whole', id: '-', p: 0 }, moment: m, placeholder: true };
+    items.push(ph); const el = rowEl(ph); el.className = 'row forming'; el.querySelector('.gut').textContent = ' '; const txt = el.querySelector('.txt'); txt.textContent = '░'; list.scrollTop = list.scrollHeight; parkPin();
+    setPin('hearing');
+    const blocks = 2 + Math.min(2, Math.floor(text.length / 25));
+    let b = 1; const grow = setInterval(() => { b++; txt.textContent = '░'.repeat(b); if (b >= blocks) clearInterval(grow); }, 450);
+    const speechEnd = blocks * 450;
+    setTimeout(() => { clearInterval(grow); setPin(GameMock.ptt_down ? 'folded' : 'listening'); resolve(u, text, ph, m); }, speechEnd);
+  }
+  function removeRow(it) { const el = list.querySelector(`[data-id="${it.id}"]`); if (el) el.remove(); const i = items.indexOf(it); if (i >= 0) items.splice(i, 1); }
+  function resolve(u, text, ph, m) {
+    const c = typeof u === 'string' ? { say: u, kind: 'feel', restated: text.toLowerCase(), about: { kind: 'whole', id: '-', label: '', p: .5, alts: [] }, p: .62 } : u;
+    const target = bound && performance.now() < boundUntil ? bound : null;
+    // verdicts bind to the one item on trial
+    if (c.verdict) { removeRow(ph); const trial = items.find(i => i.state === 'live'); if (trial) { trial.state = c.verdict === 'keep' ? 'kept' : 'reverted'; enqueue(() => { render(trial); if (c.verdict === 'revert') GameMock.banner(L() === 'ko' ? '되돌림' : 'Rolled back', trial.restated, null, 'r212'); }, true); } return; }
+    // corrections: bound item, else the item most recently spoken about (≤ 20 s)
+    if (c.correction || target) {
+      removeRow(ph);
+      const it = target || [...items].reverse().find(i => !i.placeholder && !i.ghost && performance.now() - i.lastSpoke < 20000 && (c.correction ? i.kind === (c.correction.ofKind || i.kind) : true));
+      if (!it) return;
+      enqueue(() => applyCorrection(it, c, text), true); return;
+    }
+    // asides: Jev says "not for us" → ghost row that fades
+    if (c.aside) { ph.ghost = true; ph.kind = 'feel'; ph.restated = L() === 'ko' ? `(옆사람에게) “${clip(text, 20)}”` : `(aside) “${clip(text, 22)}”`; ph.said = [text]; ph.placeholder = false; enqueue(() => { render(ph); setTimeout(() => { removeRow(ph); footer(); tickerLine(); parkPin(); }, 8000); }); return; }
+    // repeats accrue ² on the existing row
+    if (c.accrue) { removeRow(ph); const it = [...items].reverse().find(i => !i.placeholder && !i.ghost && i.restated.startsWith(c.accrue)); if (it) { it.weight = (it.weight || 1) + 1; it.said.push(text); it.lastSpoke = performance.now(); if (c.proposal) it.proposal = true; enqueue(() => glance(it.about, () => render(it))); } return; }
+    // a new item (possibly two thoughts: it forms as one row, then splits on the next pause)
+    const it = Object.assign(ph, { placeholder: false, kind: c.kind, restated: c.restated, said: [text], about: c.about, p: c.p || .8, unsure: (c.about.p || 1) < 0.7, plan: c.plan || null, tier: c.tier || 'auto', answer: null, lastSpoke: performance.now(), state: 'forming', weight: 1, steps: c.steps || ['reading layout.rb', 'found the gate', 'moved it 12', 'tests 41/41'], splitInto: c.split || null });
+    it.moment = m;
+    it.koma = komaFor(it.about); it.komaRatio = lastKomaRatio; // captured before any outline, so the koma is clean
+    // one budgeted change: the glance (if confident) and the row churning in
+    enqueue(() => glance(it.about, () => { render(it, { churn: true }); settleLater(it); if (c.kind === 'why') setTimeout(() => { it.answer = c.answer; enqueue(() => render(it)); }, 2600); }));
+  }
+  function settleLater(it) {
+    const at = performance.now(); it.lastChange = at;
+    setTimeout(() => { if (it.lastChange !== at || it.state !== 'forming') return; it.state = 'settled'; enqueue(() => render(it)); pin.classList.add('blink'); setTimeout(() => pin.classList.remove('blink'), 300);
+      // a two-thought row splits on the pause after settling (nothing above moves: the second child appends below)
+      if (it.splitInto) { const [a, b2] = it.splitInto; it.restated = a.restated; it.about = a.about; it.kind = a.kind; it.koma = komaFor(a.about); const child = Object.assign({}, it, { id: 'i' + nextId++, kind: b2.kind, restated: b2.restated, about: b2.about, koma: null, splitInto: null, state: 'forming', lastSpoke: performance.now() }); it.splitInto = null; child.koma = komaFor(child.about); child.komaRatio = lastKomaRatio; items.push(child); enqueue(() => { render(it, { churn: true }); render(child, { churn: true }); settleLater(child); }); }
+    }, 6000);
+  }
+  // the glance: ONE landing on the top candidate, only when confidence ≥ 0.7. The margin Pin never crosses the black:
+  // it leans toward the game while the in-game brackets fade in at the target (same yellow). Off in quiet mode.
+  function glance(about, then) {
+    const r = about.kind !== 'whole' ? GameMock.rectFor(about.kind, about.id) : null;
+    if (quiet || !r || (about.p || 0) < 0.7) { then(); return; }
+    pin.classList.add('lean');
+    GameMock.outline(about.kind, about.id, { ttl: 800, alpha: .4, fade: 150 });
+    setTimeout(() => { pin.classList.remove('lean'); then(); }, 650);
+  }
+  function applyCorrection(it, c, text) {
+    it.said.push(text); it.lastSpoke = performance.now(); it.corrected = true;
+    if (c.correction && c.correction.target) {
+      it.aboutWas = `${it.about.kind}:${it.about.id}`; it.about = Object.assign({ p: .9, alts: [] }, c.correction.target); it.unsure = false;
+      if (selected === it) lock(it); else GameMock.outline(it.about.kind, it.about.id, { ttl: 1200, alpha: .5 });
+      it.koma = komaFor(it.about); it.komaRatio = lastKomaRatio;
+    }
+    if (c.correction && c.correction.restated) { it.strike = { text: it.restated, until: performance.now() + 1500 }; it.restated = c.correction.restated; }
+    else if (!c.correction) { it.strike = { text: it.restated, until: performance.now() + 1500 }; it.restated = text.toLowerCase(); }
+    if (c.correction && c.correction.kind) it.kind = c.correction.kind;
+    if (c.correction && c.correction.tier) it.tier = c.correction.tier;
+    it.got = { text: c.correction && c.correction.got ? c.correction.got : (L() === 'ko' ? '알겠음' : 'got it'), until: performance.now() + 3000 };
+    render(it, { churn: true });
+  }
+
+  // ------------------------------------------------------------------ gestures on rows: tap, hold, talk, swipe
+  function lock(it) {
+    const label = it.about.label || `${String(it.about.id).toUpperCase()} · ${it.about.kind.toUpperCase()}`;
+    if (it.about.kind === 'whole') { GameMock.clearLock(); return; }
+    GameMock.outline(it.about.kind, it.about.id, { mode: 'lock', label, alpha: 1 });
+    pinAway = true; pin.classList.add('away');
+  }
+  function select(it) {
+    const prev = selected; selected = it === selected ? null : it;
+    GameMock.clearLock();
+    if (prev) render(prev);
+    if (selected) { lock(selected); bound = selected; boundUntil = performance.now() + 8000; $('#bound').textContent = L() === 'ko' ? `→ 선택된 항목에게 말하는 중` : `→ speaking to the selected item`; render(selected); }
+    else { pinReturn(); bound = null; $('#bound').textContent = ''; }
+  }
+  function bindRow(el, it) {
+    let t0 = 0, x0 = 0, y0 = 0, moved = false, holdT = null, held = false;
+    el.addEventListener('pointerdown', (e) => {
+      if (it.placeholder || it.ghost || it.state === 'merged') return;
+      t0 = performance.now(); x0 = e.clientX; y0 = e.clientY; moved = false; held = false;
+      el.setPointerCapture(e.pointerId);
+      if (!['dismissed', 'kept', 'reverted'].includes(it.state)) { el.classList.add('holding'); holdT = setTimeout(() => { held = true; el.classList.remove('holding'); start(it); }, 600); }
+    });
+    el.addEventListener('pointermove', (e) => { if (Math.abs(e.clientX - x0) > 8 || Math.abs(e.clientY - y0) > 8) { moved = true; el.classList.remove('holding'); clearTimeout(holdT); } });
+    el.addEventListener('pointerup', (e) => {
+      clearTimeout(holdT); el.classList.remove('holding');
+      if (held) return;
+      const dx = e.clientX - x0, dy = e.clientY - y0;
+      if (Math.abs(dx) > 60 && Math.abs(dy) < 40) { if (dx < 0) dismiss(it); else mergeMode(it); return; }
+      if (moved) return;
+      if (list.classList.contains('merging')) { mergeInto(it); return; }
+      select(it);
+    });
+    el.addEventListener('pointercancel', () => { clearTimeout(holdT); el.classList.remove('holding'); });
+  }
+  function dismiss(it) { if (selected === it) select(it); it.state = it.state === 'dismissed' ? 'settled' : 'dismissed'; render(it); }
+  let mergeSrc = null;
+  function mergeMode(it) { mergeSrc = it; list.classList.add('merging'); list.querySelectorAll('.row').forEach(r => r.classList.toggle('merge-src', r.dataset.id === it.id)); $('#bound').textContent = L() === 'ko' ? '이것과 합치기 → 다른 줄을 탭' : 'this goes with… → tap a row'; }
+  function mergeInto(target) {
+    list.classList.remove('merging'); list.querySelectorAll('.merge-src').forEach(r => r.classList.remove('merge-src')); $('#bound').textContent = '';
+    if (!mergeSrc || target === mergeSrc) { mergeSrc = null; return; }
+    if (selected === mergeSrc) select(mergeSrc);
+    mergeSrc.state = 'merged'; target.weight = (target.weight || 1) + 1; target.said.push(...mergeSrc.said); target.proposal = true;
+    render(mergeSrc); render(target); mergeSrc = null;
+  }
+  function tidy() { items.filter(i => i.state === 'merged' || i.state === 'dismissed').forEach(i => removeRow(i)); footer(); tickerLine(); parkPin(); }
+  function start(it) {
+    if (['started', 'testing', 'landing', 'live', 'kept'].includes(it.state)) return;
+    if (it.tier === 'needs-josh') { it.state = 'needsjosh'; render(it); return; }
+    it.state = 'started'; it.step = 0; render(it);
+    const adv = setInterval(() => { if (it.state !== 'started') return clearInterval(adv); it.step++; if (it.step >= it.steps.length) { it.state = 'landing'; clearInterval(adv); } enqueue(() => render(it)); }, 3800);
+  }
+  // breath point: walking out the door lands one finished change (the arrival gate), with the item's own words
+  function door() {
+    GameMock.chapter(); tidy();
+    setTimeout(() => {
+      const ready = items.find(i => i.state === 'landing') || items.find(i => i.state === 'started');
+      if (!ready) return;
+      ready.state = 'live';
+      GameMock.banner(L() === 'ko' ? '업데이트' : 'Updated', ready.restated, 'Josh', 'r213');
+      render(ready);
+    }, 2800);
+  }
+  list.addEventListener('pointerdown', (e) => { if (e.target === list && list.classList.contains('merging')) mergeInto(null); });
+
+  // ------------------------------------------------------------------ canvas: PTT on the mic; tap the game deselects
+  let pttTimer = null;
+  canvas.addEventListener('pointerdown', (e) => {
+    const [x, y] = toLogical(e.clientX, e.clientY); const m = GameMock.layout.mic;
+    if (Math.hypot(x - m.x, y - m.y) <= m.r) { canvas.setPointerCapture(e.pointerId); GameMock.ptt(true); return; }
+    if (mode === 'iphone' && panel.classList.contains('risen')) { sink(); return; }
+    if (selected) select(selected);
+  });
+  const endPtt = () => { if (GameMock.ptt_down) GameMock.ptt(false); };
+  canvas.addEventListener('pointerup', endPtt); canvas.addEventListener('pointercancel', endPtt);
+  GameMock.on('ptt', (down) => {
+    if (down) { setPin('folded'); panel.classList.add('dim'); tidy(); }
+    else setTimeout(() => { panel.classList.remove('dim'); setPin('listening'); }, 250);
+    footer();
+  });
+
+  // ------------------------------------------------------------------ iPhone sheet
+  function rise() { panel.classList.add('risen'); ticker.style.opacity = '0'; }
+  function sink() { panel.classList.remove('risen'); ticker.style.opacity = ''; tidy(); if (selected && !['started', 'testing', 'landing', 'live'].includes(selected.state)) select(selected); }
+  ticker.addEventListener('pointerup', rise);
+  let sy0 = 0; panel.addEventListener('pointerdown', (e) => { sy0 = e.clientY; }); panel.addEventListener('pointerup', (e) => { if (mode === 'iphone' && e.clientY - sy0 > 70 && e.target.closest('.hdr')) sink(); });
+  let sinkT = 0; const bump = () => { clearTimeout(sinkT); if (mode === 'iphone' && panel.classList.contains('risen')) sinkT = setTimeout(() => { if (!selected) sink(); }, 8000); };
+  panel.addEventListener('pointerdown', bump);
+
+  // ------------------------------------------------------------------ header controls
+  $('#hQuiet').addEventListener('click', () => { quiet = !quiet; $('#hQuiet').classList.toggle('on', quiet); footer(); });
+  $('#hLang').addEventListener('click', () => setLang(L() === 'en' ? 'ko' : 'en'));
+  let pinHold = null;
+  pin.addEventListener('pointerdown', () => { pinHold = setTimeout(() => { muted = !muted; setPin(pinState); footer(); }, 600); });
+  pin.addEventListener('pointerup', () => clearTimeout(pinHold)); pin.addEventListener('pointercancel', () => clearTimeout(pinHold));
+
+  // ------------------------------------------------------------------ the booth (canned speech)
+  const CANNED = {
+    en: [
+      { say: "ok Figgs answered like, before I let go. that's way too fast", kind: 'feel', restated: 'figgs answers way too fast', about: { kind: 'actor', id: 'Figgs', label: 'FIGGS · ACTOR', p: .91, alts: [{ id: 'card', kind: 'card', p: .06 }] }, p: .91, plan: 'reply floor 0.9 s; check it is measured from release, not first byte (director.rb gates)', steps: ['reading director.rb', 'found the floor gate', 'measured from release', 'tests 41/41'] },
+      { say: "Nuaz's card is like four lines. on a phone that's a wall", kind: 'feel', restated: 'nuaz card too long for phone', about: { kind: 'actor', id: 'Nuaz', label: 'NUAZ · ACTOR', p: .84, alts: [] }, p: .84, plan: 'speech_metrics max_w 440 → paginate at 3 lines (layout.rb)' },
+      { say: "wait. why did Potts just walk through the table", kind: 'broke', restated: 'potts walked through table', about: { kind: 'actor', id: 'Potts', label: 'POTTS · ACTOR', p: .58, alts: [{ id: 'Yara', kind: 'actor', p: .31 }] }, p: .58, plan: 'path ignores table cells when approach-walking; check World#path solid flags' },
+      { say: "no not Potts, the one who came in, the corner guy", correction: { ofKind: 'broke', target: { kind: 'actor', id: 'Yara', label: 'YARA · ACTOR' }, restated: 'yara walked through table', got: 'got it: target yara, not potts' } },
+      { say: "yeah Figgs is still too fast", accrue: 'figgs answers', p: .9 },
+      { say: "ha! I love that. the WHAM is perfect, don't touch it", kind: 'keep', restated: 'the WHAM is perfect, keep', about: { kind: 'actor', id: 'Nuaz', label: 'WHAM · BEAT 108', p: .76, alts: [] }, p: .9 },
+      { say: "the ACT button is way too low on this thing", kind: 'want', restated: 'ACT button too low for my thumb', about: { kind: 'ui', id: 'act', label: 'ACT · HUD', p: .97, alts: [] }, p: .95, plan: 'Layout @act: y +12 px (one constant); Fiddle it 0–24 first', steps: ['reading layout.rb', 'found @act', 'moved it up 12', 'tests 41/41'] },
+      { say: "wait did Potts just teleport? he was in the corner", kind: 'why', restated: 'did potts just teleport?', about: { kind: 'actor', id: 'Potts', label: 'POTTS · ACTOR', p: .88, alts: [] }, p: .86, answer: "jev read 'Potts rolls over' as arrive, not walk (op 104): no path, so he appeared" },
+      { say: "the menu text is tiny and also why is the music so loud in here", kind: 'feel', restated: 'menu text tiny + music too loud', about: { kind: 'ui', id: 'act', label: 'ACT · HUD', p: .7, alts: [] }, p: .8, split: [{ kind: 'feel', restated: 'the menu text is tiny', about: { kind: 'ui', id: 'act', label: 'MENU · HUD', p: .8, alts: [] } }, { kind: 'feel', restated: 'why is the music so loud in here', about: { kind: 'ui', id: 'header', label: '♪ · HUD', p: .7, alts: [] } }] },
+      { say: "I feel like Figgs talks too much like an assistant", kind: 'feel', restated: 'I feel like figgs talks too much like an assistant', about: { kind: 'actor', id: 'Figgs', label: 'FIGGS · ACTOR', p: .95, alts: [] }, p: .97, plan: "collect Figgs's last 20 lines; this is the author's voice (prompt) → not auto", tier: 'needs-josh' },
+      { say: "hold on, someone's at the door", aside: true },
+      { say: "yeah that's it", verdict: 'keep' },
+      { say: "no, worse. put it back", verdict: 'revert' },
+    ],
+    ko: [
+      { say: "음... 민수 대사 방금 두 번 나온 거 같은데?", kind: 'broke', restated: '민수 대사 두 번 나왔네', about: { kind: 'actor', id: '민수', label: '민수 · 배우', p: .84, alts: [] }, p: .84, plan: 'feed #203/#211 같은 텍스트 두 번: dedupe 창 확인 (session.py)' },
+      { say: "이 벽시계 소리 좀 거슬리네. 계속 똑딱똑딱", kind: 'feel', restated: '벽시계 소리 너무 거슬리네', about: { kind: 'prop', id: 'clock', label: '벽시계 · 소품', p: .9, alts: [] }, p: .88, plan: 'clock_tick 볼륨 0.6 → 0.3 (Fiddle 0–1로 먼저)' },
+      { say: "어? 왜 얘가 갑자기 여기 서 있어?", kind: 'broke', restated: '왜 송 박사가 갑자기 여기 서 있어', about: { kind: 'actor', id: '송 박사', label: '송 박사 · 배우', p: .61, alts: [{ id: '히리야 상', kind: 'actor', p: .30 }] }, p: .8, plan: 'walk op 누락 의심: 경로가 화면 밖으로 돈 듯 (compiler _arrive)' },
+      { say: "아니 송 박사 아니고 히리야 상. 걔가 갑자기 와 있잖아", correction: { ofKind: 'broke', target: { kind: 'actor', id: '히리야 상', label: '히리야 상 · 배우' }, restated: '히리야 상이 갑자기 와 있잖아', got: '알겠음: 송 박사 아니고 히리야 상' } },
+      { say: "이거 좀 이상한데", accrue: '히리야 상 갑자기', p: .7 },
+      { say: "이 느낌 좋다. 이런 조용한 순간.", kind: 'keep', restated: '이 조용한 분위기 좋다, 이대로', about: { kind: 'whole', id: '-', label: '', p: .7, alts: [] }, p: .86 },
+      { say: "ACT 버튼 너무 아래 있는 거 아니야?", kind: 'feel', restated: 'ACT 버튼 너무 아래 있는 거 아니야?', about: { kind: 'ui', id: 'act', label: 'ACT · HUD', p: .97, alts: [] }, p: .95, plan: 'Layout @act y +12px (상수 하나); Fiddle로 0–24 먼저', steps: ['layout.rb 읽는 중', '@act 찾음', '12px 올림', '테스트 41/41'] },
+      { say: "음... 뭔가 좀... 느려", kind: 'feel', restated: '뭔가 좀 느려 (대답이?)', about: { kind: 'whole', id: '-', label: '', p: .41, alts: [{ id: '송 박사', kind: 'actor', p: .22 }] }, p: .84, plan: '대답 3.1 s 측정됨; reply floor 0.9 + 큐 확인' },
+      { say: "히리야 상이 왜 갑자기 물 얘기해? 이해가 안 되네", kind: 'why', restated: '히리야 상 왜 갑자기 물 얘기해?', about: { kind: 'actor', id: '히리야 상', label: '히리야 상 · 배우', p: .9, alts: [] }, p: .85, answer: "op 205: 대본에 '물, 마십니까?' 그대로 있음 (작가 라인, 컴파일 문제 아님)" },
+      { say: "글자 너무 작고 그리고 배경음악 너무 커", kind: 'feel', restated: '글자 너무 작고 배경음악 너무 커', about: { kind: 'ui', id: 'feed', label: '피드 · HUD', p: .7, alts: [] }, p: .8, split: [{ kind: 'feel', restated: '글자 너무 작아', about: { kind: 'ui', id: 'feed', label: '피드 · HUD', p: .8, alts: [] } }, { kind: 'feel', restated: '배경음악 너무 커', about: { kind: 'ui', id: 'header', label: '♪ · HUD', p: .7, alts: [] } }] },
+      { say: "송 박사 말투가 너무 비서 같아", kind: 'feel', restated: '송 박사 말투가 너무 비서 같아', about: { kind: 'actor', id: '송 박사', label: '송 박사 · 배우', p: .95, alts: [] }, p: .95, plan: '송 박사 최근 대사 20줄 모으기; 작가 프롬프트(모델이 보는 텍스트) → 자동 아님', tier: 'needs-josh' },
+      { say: "민지야 밥 먹었어?", aside: true },
+      { say: "어 됐다, 이거야", verdict: 'keep' },
+      { say: "아 이건 아니다. 되돌려", verdict: 'revert' },
+    ],
+  };
+  function buildChips() {
+    const box = $('#chips'); box.innerHTML = '';
+    CANNED[L()].forEach((c) => { const b = document.createElement('button'); b.textContent = c.say; b.addEventListener('click', () => speak(c)); box.appendChild(b); });
+  }
+  $('#sayBtn').addEventListener('click', () => { const v = $('#say').value.trim(); if (v) { speak(v); $('#say').value = ''; } });
+  $('#say').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('#sayBtn').click(); });
+  $('#door').addEventListener('click', door);
+  $('#boothTab').addEventListener('click', () => booth.classList.toggle('open'));
+  let demoT = [];
+  $('#demo').addEventListener('click', () => {
+    demoT.forEach(clearTimeout); demoT = [];
+    const seq = CANNED[L()]; const order = [0, 1, 2, 3, 4, 5, 6, 7, 8, 10];
+    let t = 600;
+    order.forEach((i, n) => { demoT.push(setTimeout(() => speak(seq[i]), t)); t += 7000 + (n % 3) * 1500; });
+    // then: tap the ACT item, hold to start, walk out the door, give a verdict
+    demoT.push(setTimeout(() => { const it = items.find(i => i.about && i.about.id === 'act' && !i.splitInto); if (it) select(it); }, t)); t += 3500;
+    demoT.push(setTimeout(() => { const it = selected; if (it) { start(it); } }, t)); t += 14000;
+    demoT.push(setTimeout(() => { if (selected) select(selected); door(); }, t)); t += 6000;
+    demoT.push(setTimeout(() => speak(seq[seq.length - 2]), t));
+  });
+
+  // ------------------------------------------------------------------ language
+  function setLang(l) {
+    GameMock.setLang(l); body.classList.toggle('ko', l === 'ko'); document.documentElement.lang = l;
+    items.splice(0); list.innerHTML = ''; selected = null; bound = null; GameMock.clearLock(); pinReturn();
+    $('#hWorld').textContent = l === 'ko' ? '광수의 집' : 'bar'; $('#hLang').textContent = l;
+    $('#say').placeholder = l === 'ko' ? '말하기…' : 'say…'; $('#door').textContent = l === 'ko' ? '현관문 밖으로 →' : 'walk out the door →';
+    buildChips(); footer(); tickerLine();
+  }
+
+  // ------------------------------------------------------------------ boot
+  GameMock.mount(canvas);
+  const params = new URLSearchParams(location.search);
+  layout(); window.addEventListener('resize', layout); if (window.visualViewport) window.visualViewport.addEventListener('resize', layout);
+  setLang(params.get('lang') === 'ko' ? 'ko' : 'en');
+  setPin('listening'); parkPin(); setInterval(parkPin, 400);
+  if (params.has('demo')) setTimeout(() => $('#demo').click(), 300);
+  // staged states for screenshots: ?stage=glance|selected|busy
+  window.__half = { speak, items, select, start, door, CANNED, setLang, get selected() { return selected; } };
+})();
+</script>
+</body>
+</html>
